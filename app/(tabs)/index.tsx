@@ -231,7 +231,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>💼 Bu Ayki Gelirler</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/reports')} activeOpacity={0.7}>
+            <TouchableOpacity onPress={() => router.push('/incomes/list')} activeOpacity={0.7}>
               <Text style={styles.seeAllText}>Tümünü Gör →</Text>
             </TouchableOpacity>
           </View>
