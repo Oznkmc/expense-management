@@ -1,112 +1,260 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert
+} from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+export default function SettingsScreen() {
+  const { userProfile, updateUserProfile, signOut } = useAuth();
+  const router = useRouter();
+  const [monthlyBudget, setMonthlyBudget] = useState(
+    userProfile?.monthlyBudget.toString() || '0'
+  );
+  const [displayName, setDisplayName] = useState(userProfile?.displayName || '');
 
-export default function TabTwoScreen() {
+  const handleSaveProfile = async () => {
+    const budget = parseFloat(monthlyBudget);
+    if (isNaN(budget) || budget < 0) {
+      Alert.alert('Hata', 'Geçerli bir bütçe girin');
+      return;
+    }
+
+    try {
+      await updateUserProfile({
+        displayName,
+        monthlyBudget: budget
+      });
+      Alert.alert('Başarılı', 'Profil güncellendi');
+    } catch (error: any) {
+      Alert.alert('Hata', error.message);
+    }
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Çıkış Yap',
+      'Çıkış yapmak istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Çıkış Yap',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/auth/login');
+          }
+        }
+      ]
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>⚙️ Ayarlar</Text>
+      </View>
+
+      {/* Profile Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Profil</Text>
+        
+        <View style={styles.card}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Ad Soyad</Text>
+            <TextInput
+              style={styles.input}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Ad Soyad"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>E-posta</Text>
+            <Text style={styles.emailText}>{userProfile?.email}</Text>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Aylık Bütçe (₺)</Text>
+            <TextInput
+              style={styles.input}
+              value={monthlyBudget}
+              onChangeText={setMonthlyBudget}
+              keyboardType="decimal-pad"
+              placeholder="0"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+            <Text style={styles.saveButtonText}>Kaydet</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* App Info */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Uygulama Hakkında</Text>
+        
+        <View style={styles.card}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Versiyon</Text>
+            <Text style={styles.infoValue}>1.0.0</Text>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Geliştirici</Text>
+            <Text style={styles.infoValue}>Harcama Takip</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Quick Stats */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>İstatistikler</Text>
+        
+        <View style={styles.card}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Hesap Oluşturulma</Text>
+            <Text style={styles.infoValue}>
+              {userProfile?.createdAt instanceof Date 
+                ? userProfile.createdAt.toLocaleDateString('tr-TR')
+                : new Date(userProfile?.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
+              }
+            </Text>
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Son Güncelleme</Text>
+            <Text style={styles.infoValue}>
+              {userProfile?.updatedAt instanceof Date 
+                ? userProfile.updatedAt.toLocaleDateString('tr-TR')
+                : new Date(userProfile?.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
+              }
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Sign Out */}
+      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+        <Text style={styles.signOutText}>Çıkış Yap</Text>
+      </TouchableOpacity>
+
+      <View style={styles.bottomSpacing} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  titleContainer: {
+  header: {
+    padding: 20,
+    paddingTop: 60,
+    backgroundColor: '#fff',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  section: {
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  emailText: {
+    fontSize: 16,
+    color: '#666',
+    paddingVertical: 12,
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoRow: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  infoLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+  },
+  signOutButton: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    backgroundColor: '#FF3B30',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bottomSpacing: {
+    height: 40,
   },
 });
