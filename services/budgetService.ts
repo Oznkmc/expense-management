@@ -92,10 +92,12 @@ export const budgetService = {
       categoryBreakdown[mainCategory] += expense.amount;
     });
 
-    // Daily expenses
+    // Daily expenses (use local date to avoid timezone shifting a day back)
     const dailyExpenses: Record<string, number> = {};
     expenses.forEach(expense => {
-      const dateKey = expense.date.toISOString().split('T')[0];
+      const dateKey = `${expense.date.getFullYear()}-${(expense.date.getMonth() + 1)
+        .toString()
+        .padStart(2, '0')}-${expense.date.getDate().toString().padStart(2, '0')}`;
       dailyExpenses[dateKey] = (dailyExpenses[dateKey] || 0) + expense.amount;
     });
 

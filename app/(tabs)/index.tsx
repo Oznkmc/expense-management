@@ -11,8 +11,10 @@ import {
   Modal,
   Dimensions,
   Platform,
-  Animated
+  Animated,
+  Alert
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
 import { expenseService } from '../../services/expenseService';
@@ -71,6 +73,44 @@ export default function HomeScreen() {
     loadData();
   };
 
+  const confirmDeleteExpense = (expenseId: string) => {
+    Alert.alert('Sil', 'Bu harcamayı silmek istediğine emin misin?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await expenseService.deleteExpense(expenseId);
+            setRecentExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+            loadData();
+          } catch (err) {
+            Alert.alert('Hata', 'Harcama silinirken bir sorun oluştu');
+          }
+        }
+      }
+    ]);
+  };
+
+  const confirmDeleteIncome = (incomeId: string) => {
+    Alert.alert('Sil', 'Bu geliri silmek istediğine emin misin?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await incomeService.deleteIncome(incomeId);
+            setRecentIncomes((prev) => prev.filter((i) => i.id !== incomeId));
+            loadData();
+          } catch (err) {
+            Alert.alert('Hata', 'Gelir silinirken bir sorun oluştu');
+          }
+        }
+      }
+    ]);
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 12) return '☀️ Günaydın';
@@ -85,6 +125,13 @@ export default function HomeScreen() {
     if (percentage < 90) return '⚠️';
     return '🚨';
   };
+
+  const renderDeleteAction = (onPress: () => void) => (
+    <TouchableOpacity style={styles.swipeAction} onPress={onPress} activeOpacity={0.8}>
+      <Text style={styles.swipeDeleteIcon}>🗑️</Text>
+      <Text style={styles.swipeDeleteText}>Sil</Text>
+    </TouchableOpacity>
+  );
 
   if (loading) {
     return (
@@ -239,30 +286,37 @@ export default function HomeScreen() {
           <View style={styles.card}>
             {recentIncomes.map((income, index) => (
               <View key={income.id}>
-                <View style={styles.incomeItem}>
-                  <View style={styles.incomeLeft}>
-                    <View style={styles.incomeIconContainer}>
-                      <Text style={styles.incomeIcon}>💰</Text>
-                    </View>
-                    <View style={styles.incomeInfo}>
-                      <Text style={styles.incomeSource}>{income.source}</Text>
-                      <View style={styles.incomeMeta}>
-                        <Text style={styles.incomeDate}>
-                          {income.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                        </Text>
-                        {income.isRecurring && (
-                          <>
-                            <Text style={styles.incomeDot}>•</Text>
-                            <Text style={styles.recurringBadge}>🔄 Düzenli</Text>
-                          </>
-                        )}
+                <Swipeable
+                  renderRightActions={() => renderDeleteAction(() => confirmDeleteIncome(income.id))}
+                  overshootRight={false}
+                >
+                  <View style={styles.incomeItem}>
+                    <View style={styles.incomeLeft}>
+                      <View style={styles.incomeIconContainer}>
+                        <Text style={styles.incomeIcon}>💰</Text>
+                      </View>
+                      <View style={styles.incomeInfo}>
+                        <Text style={styles.incomeSource}>{income.source}</Text>
+                        <View style={styles.incomeMeta}>
+                          <Text style={styles.incomeDate}>
+                            {income.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                          </Text>
+                          {income.isRecurring && (
+                            <>
+                              <Text style={styles.incomeDot}>•</Text>
+                              <Text style={styles.recurringBadge}>🔄 Düzenli</Text>
+                            </>
+                          )}
+                        </View>
                       </View>
                     </View>
+                    <View style={styles.itemActions}>
+                      <Text style={styles.incomeAmount}>
+                        +₺{income.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.incomeAmount}>
-                    +₺{income.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                  </Text>
-                </View>
+                </Swipeable>
                 {index < recentIncomes.length - 1 && <View style={styles.itemDivider} />}
               </View>
             ))}
@@ -334,40 +388,47 @@ export default function HomeScreen() {
           <View style={styles.card}>
             {recentExpenses.map((expense, index) => (
               <View key={expense.id}>
-                <View style={styles.expenseItem}>
-                  {expense.photoURL ? (
-                    <TouchableOpacity
-                      onPress={() => setSelectedImage(expense.photoURL!)}
-                      activeOpacity={0.8}
-                    >
-                      <Image
-                        source={{ uri: expense.photoURL }}
-                        style={styles.expenseThumb}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={styles.expenseIconPlaceholder}>
-                      <Text style={styles.expensePlaceholderIcon}>🧾</Text>
+                <Swipeable
+                  renderRightActions={() => renderDeleteAction(() => confirmDeleteExpense(expense.id))}
+                  overshootRight={false}
+                >
+                  <View style={styles.expenseItem}>
+                    {expense.photoURL ? (
+                      <TouchableOpacity
+                        onPress={() => setSelectedImage(expense.photoURL!)}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={{ uri: expense.photoURL }}
+                          style={styles.expenseThumb}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.expenseIconPlaceholder}>
+                        <Text style={styles.expensePlaceholderIcon}>🧾</Text>
+                      </View>
+                    )}
+                    <View style={styles.expenseInfo}>
+                      <Text style={styles.expenseNote} numberOfLines={1}>
+                        {expense.note || 'Harcama'}
+                      </Text>
+                      <Text style={styles.expenseDate}>
+                        {expense.date.toLocaleDateString('tr-TR', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Text>
                     </View>
-                  )}
-                  <View style={styles.expenseInfo}>
-                    <Text style={styles.expenseNote} numberOfLines={1}>
-                      {expense.note || 'Harcama'}
-                    </Text>
-                    <Text style={styles.expenseDate}>
-                      {expense.date.toLocaleDateString('tr-TR', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
+                    <View style={styles.itemActions}>
+                      <Text style={styles.expenseAmount}>
+                        -₺{expense.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.expenseAmount}>
-                    -₺{expense.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                  </Text>
-                </View>
+                </Swipeable>
                 {index < recentExpenses.length - 1 && <View style={styles.itemDivider} />}
               </View>
             ))}
@@ -811,6 +872,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#34C759',
+  },
+  itemActions: {
+    alignItems: 'flex-end',
+  },
+  swipeAction: {
+    backgroundColor: '#FFE8E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginVertical: 2,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  swipeDeleteIcon: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  swipeDeleteText: {
+    color: '#D32F2F',
+    fontWeight: '700',
+    fontSize: 12,
   },
   itemDivider: {
     height: 1,

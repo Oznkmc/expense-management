@@ -14,22 +14,19 @@ import { useRouter } from 'expo-router';
 export default function SettingsScreen() {
   const { userProfile, updateUserProfile, signOut } = useAuth();
   const router = useRouter();
-  const [monthlyBudget, setMonthlyBudget] = useState(
-    userProfile?.monthlyBudget.toString() || '0'
-  );
   const [displayName, setDisplayName] = useState(userProfile?.displayName || '');
 
-  const handleSaveProfile = async () => {
-    const budget = parseFloat(monthlyBudget);
-    if (isNaN(budget) || budget < 0) {
-      Alert.alert('Hata', 'Geçerli bir bütçe girin');
-      return;
+  // Sync form fields when profile comes in later (e.g., after async load)
+  React.useEffect(() => {
+    if (userProfile) {
+      setDisplayName(userProfile.displayName || '');
     }
+  }, [userProfile]);
 
+  const handleSaveProfile = async () => {
     try {
       await updateUserProfile({
-        displayName,
-        monthlyBudget: budget
+        displayName
       });
       Alert.alert('Başarılı', 'Profil güncellendi');
     } catch (error: any) {
@@ -56,7 +53,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
@@ -67,7 +64,7 @@ export default function SettingsScreen() {
       {/* Profile Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Profil</Text>
-        
+
         <View style={styles.card}>
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Ad Soyad</Text>
@@ -84,17 +81,6 @@ export default function SettingsScreen() {
             <Text style={styles.emailText}>{userProfile?.email}</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Aylık Bütçe (₺)</Text>
-            <TextInput
-              style={styles.input}
-              value={monthlyBudget}
-              onChangeText={setMonthlyBudget}
-              keyboardType="decimal-pad"
-              placeholder="0"
-            />
-          </View>
-
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
             <Text style={styles.saveButtonText}>Kaydet</Text>
           </TouchableOpacity>
@@ -104,7 +90,7 @@ export default function SettingsScreen() {
       {/* App Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Uygulama Hakkında</Text>
-        
+
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Versiyon</Text>
@@ -113,7 +99,7 @@ export default function SettingsScreen() {
           <View style={styles.separator} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Geliştirici</Text>
-            <Text style={styles.infoValue}>Harcama Takip</Text>
+            <Text style={styles.infoValue}>Davut Umut</Text>
           </View>
         </View>
       </View>
@@ -121,12 +107,12 @@ export default function SettingsScreen() {
       {/* Quick Stats */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>İstatistikler</Text>
-        
+
         <View style={styles.card}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Hesap Oluşturulma</Text>
             <Text style={styles.infoValue}>
-              {userProfile?.createdAt instanceof Date 
+              {userProfile?.createdAt instanceof Date
                 ? userProfile.createdAt.toLocaleDateString('tr-TR')
                 : new Date((userProfile?.createdAt as any)?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
               }
@@ -136,7 +122,7 @@ export default function SettingsScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Son Güncelleme</Text>
             <Text style={styles.infoValue}>
-              {userProfile?.updatedAt instanceof Date 
+              {userProfile?.updatedAt instanceof Date
                 ? userProfile.updatedAt.toLocaleDateString('tr-TR')
                 : new Date((userProfile?.updatedAt as any)?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
               }

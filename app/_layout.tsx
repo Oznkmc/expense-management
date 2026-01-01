@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -26,42 +27,42 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/setup" options={{ headerShown: false }} />
-          <Stack.Screen name="expenses/add" options={{
-            presentation: 'modal',
-            headerShown: true,
-            headerTitle: 'Harcama Ekle',
-            headerBackTitle: 'Geri'
-          }} />
-          <Stack.Screen name="expenses/list" options={{
-            presentation: 'card',
-            headerShown: true,
-            headerTitle: 'Harcama Listesi',
-            headerBackTitle: 'Geri'
-          }} />
-          <Stack.Screen name="incomes/add" options={{
-            presentation: 'modal',
-            headerShown: true,
-            headerTitle: 'Gelir Ekle',
-            headerBackTitle: 'Geri'
-          }} />
-          <Stack.Screen name="incomes/list" options={{
-            presentation: 'card',
-            headerShown: true,
-            headerTitle: 'Gelirler Listesi',
-            headerBackTitle: 'Geri'
-          }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/setup" options={{ headerShown: false }} />
+            <Stack.Screen name="expenses/add" options={{
+              presentation: 'modal',
+              headerShown: true,
+              headerTitle: 'Harcama Ekle',
+              headerBackTitle: 'Geri'
+            }} />
+            <Stack.Screen name="expenses/list" options={{
+              presentation: 'card',
+              headerShown: true,
+              headerTitle: 'Harcama Listesi',
+              headerBackTitle: 'Geri'
+            }} />
+            <Stack.Screen name="incomes/add" options={{
+              presentation: 'modal',
+              headerShown: true,
+              headerTitle: 'Gelir Ekle',
+              headerBackTitle: 'Geri'
+            }} />
+            <Stack.Screen name="incomes/list" options={{
+              presentation: 'card',
+              headerShown: true,
+              headerTitle: 'Gelirler Listesi',
+              headerBackTitle: 'Geri'
+            }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
