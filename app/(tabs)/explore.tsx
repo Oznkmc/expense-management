@@ -56,7 +56,10 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>⚙️ Ayarlar</Text>
       </View>
@@ -125,7 +128,7 @@ export default function SettingsScreen() {
             <Text style={styles.infoValue}>
               {userProfile?.createdAt instanceof Date 
                 ? userProfile.createdAt.toLocaleDateString('tr-TR')
-                : new Date(userProfile?.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
+                : new Date((userProfile?.createdAt as any)?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
               }
             </Text>
           </View>
@@ -135,7 +138,7 @@ export default function SettingsScreen() {
             <Text style={styles.infoValue}>
               {userProfile?.updatedAt instanceof Date 
                 ? userProfile.updatedAt.toLocaleDateString('tr-TR')
-                : new Date(userProfile?.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
+                : new Date((userProfile?.updatedAt as any)?.seconds * 1000 || Date.now()).toLocaleDateString('tr-TR')
               }
             </Text>
           </View>
@@ -156,6 +159,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    paddingBottom: 100,
   },
   header: {
     padding: 20,

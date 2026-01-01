@@ -6,7 +6,9 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithCredential
+  signInWithCredential,
+  sendPasswordResetEmail,
+  sendEmailVerification
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -20,6 +22,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, displayName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
+    // Email doğrulama maili gönder
+    try {
+      await sendEmailVerification(userCredential.user);
+    } catch (error) {
+      console.log('Email verification gönderimi başarısız:', error);
+    }
+    
     // Create user profile in Firestore
     const profile: UserProfile = {
       uid: userCredential.user.uid,
@@ -68,7 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Email doğrulanmamışsa hata fırlat
+    if (!userCredential.user.emailVerified) {
+      throw new Error('E-posta adresiniz henüz doğrulanmamıştır. Lütfen e-posta doğrulama linkine tıklayın.');
+    }
   };
 
   const signOut = async () => {
@@ -89,6 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserProfile(updatedProfile);
   };
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
+  const sendVerificationEmail = async () => {
+    if (!user) throw new Error('No user logged in');
+    await sendEmailVerification(user);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -97,7 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signOut,
-      updateUserProfile
+      updateUserProfile,
+      resetPassword,
+      sendVerificationEmail
     }}>
       {children}
     </AuthContext.Provider>

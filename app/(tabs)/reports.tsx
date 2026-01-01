@@ -98,7 +98,10 @@ export default function ReportsScreen() {
     : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>📊 Raporlar</Text>
         <Text style={styles.subtitle}>
@@ -272,6 +275,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,

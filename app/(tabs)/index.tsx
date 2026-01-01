@@ -8,7 +8,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
-  Modal
+  Modal,
+  Dimensions,
+  Platform,
+  Animated
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
@@ -17,6 +20,8 @@ import { incomeService } from '../../services/incomeService';
 import { BudgetSummary, Expense, MainCategoryNames, Income } from '../../types';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { user, userProfile } = useAuth();
@@ -49,12 +54,10 @@ export default function HomeScreen() {
     }
   };
 
-  // İlk yükleme
   useEffect(() => {
     loadData();
   }, [user, userProfile]);
 
-  // Her sayfa görüntülendiğinde yenile
   useFocusEffect(
     React.useCallback(() => {
       if (user && userProfile) {
@@ -68,174 +71,306 @@ export default function HomeScreen() {
     loadData();
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '☀️ Günaydın';
+    if (hour < 18) return '👋 İyi günler';
+    return '🌙 İyi akşamlar';
+  };
+
+  const getBudgetStatusEmoji = (percentage: number) => {
+    if (percentage < 50) return '🎉';
+    if (percentage < 75) return '👍';
+    if (percentage < 90) return '⚠️';
+    return '🚨';
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Yükleniyor...</Text>
       </View>
     );
   }
 
   if (!summary) return null;
 
-  const budgetPercentage = (summary.totalExpenses / (summary.totalBudget + summary.totalIncome)) * 100;
+  const totalBudget = summary.totalBudget + summary.totalIncome;
+  const budgetPercentage = totalBudget > 0 ? (summary.totalExpenses / totalBudget) * 100 : 0;
   const isOverBudget = summary.remaining < 0;
+  const isWarning = budgetPercentage > 75 && !isOverBudget;
 
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.contentContainer}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#007AFF']} />
       }
+      showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>
-          Merhaba, {userProfile?.displayName} 👋
-        </Text>
-        <Text style={styles.date}>
-          {new Date().toLocaleDateString('tr-TR', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })}
-        </Text>
+        <View>
+          <Text style={styles.greeting}>
+            {getGreeting()}, {userProfile?.displayName?.split(' ')[0] || 'Kullanıcı'}
+          </Text>
+          <Text style={styles.date}>
+            {new Date().toLocaleDateString('tr-TR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              weekday: 'long'
+            })}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => router.push('/(tabs)/explore')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.profileIcon}>👤</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Main Budget Card */}
-      <View style={[styles.budgetCard, isOverBudget && styles.budgetCardDanger]}>
+      <View style={[
+        styles.budgetCard,
+        isOverBudget && styles.budgetCardDanger,
+        isWarning && styles.budgetCardWarning
+      ]}>
         <View style={styles.budgetHeader}>
-          <Text style={styles.budgetLabel}>Kalan Bütçe</Text>
-          <Text style={styles.daysLeft}>{summary.daysLeft} gün kaldı</Text>
+          <View>
+            <Text style={styles.budgetLabel}>Kalan Bütçe</Text>
+            <Text style={styles.budgetSubLabel}>
+              {summary.daysLeft} gün kaldı • {getBudgetStatusEmoji(budgetPercentage)}
+            </Text>
+          </View>
+          <View style={styles.percentageContainer}>
+            <Text style={styles.percentageText}>
+              {budgetPercentage.toFixed(0)}%
+            </Text>
+          </View>
         </View>
-        
+
         <Text style={[styles.budgetAmount, isOverBudget && styles.budgetAmountDanger]}>
-          ₺{summary.remaining.toFixed(2)}
+          ₺{Math.abs(summary.remaining).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </Text>
-        
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${Math.min(budgetPercentage, 100)}%` },
-              isOverBudget && styles.progressFillDanger
-            ]} 
-          />
+
+        {isOverBudget && (
+          <Text style={styles.overBudgetWarning}>Bütçe aşıldı!</Text>
+        )}
+
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.min(budgetPercentage, 100)}%` },
+                isOverBudget && styles.progressFillDanger,
+                isWarning && styles.progressFillWarning
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>
+            {budgetPercentage.toFixed(1)}%
+          </Text>
         </View>
-        
+
         <View style={styles.budgetStats}>
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Gelir</Text>
-            <Text style={styles.statValue}>₺{summary.totalIncome.toFixed(0)}</Text>
+            <Text style={styles.statIcon}>💰</Text>
+            <Text style={styles.statLabel}>Toplam</Text>
+            <Text style={styles.statValue}>
+              ₺{totalBudget.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            </Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.stat}>
+            <Text style={styles.statIcon}>📉</Text>
             <Text style={styles.statLabel}>Harcama</Text>
-            <Text style={styles.statValue}>₺{summary.totalExpenses.toFixed(0)}</Text>
+            <Text style={styles.statValue}>
+              ₺{summary.totalExpenses.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            </Text>
           </View>
+          <View style={styles.statDivider} />
           <View style={styles.stat}>
-            <Text style={styles.statLabel}>Günlük Limit</Text>
-            <Text style={styles.statValue}>₺{summary.dailyAverage.toFixed(0)}</Text>
+            <Text style={styles.statIcon}>📊</Text>
+            <Text style={styles.statLabel}>Günlük</Text>
+            <Text style={styles.statValue}>
+              ₺{summary.dailyAverage.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* Quick Add Button */}
-      <TouchableOpacity 
-        style={styles.quickAddButton}
-        onPress={() => router.push('/expenses/add')}
-      >
-        <Text style={styles.quickAddText}>+ Hızlı Harcama Ekle</Text>
-      </TouchableOpacity>
+      {/* Quick Action Buttons */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity
+          style={[styles.quickActionButton, styles.expenseButton]}
+          onPress={() => router.push('/expenses/add')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickActionIcon}>💸</Text>
+          <Text style={styles.quickActionText}>Harcama Ekle</Text>
+        </TouchableOpacity>
 
-      {/* Income Add Button */}
-      <TouchableOpacity 
-        style={styles.incomeAddButton}
-        onPress={() => router.push('/incomes/add')}
-      >
-        <Text style={styles.incomeAddText}>+ Gelir Ekle</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.quickActionButton, styles.incomeButton]}
+          onPress={() => router.push('/incomes/add')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickActionIcon}>💵</Text>
+          <Text style={styles.quickActionText}>Gelir Ekle</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Recent Incomes */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Bu Ayki Gelirler</Text>
-        {recentIncomes.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Henüz gelir yok</Text>
-            <Text style={styles.emptyStateSubtext}>İlk gelirini ekleyerek başla!</Text>
+      {recentIncomes.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>💼 Bu Ayki Gelirler</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/reports')} activeOpacity={0.7}>
+              <Text style={styles.seeAllText}>Tümünü Gör →</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          recentIncomes.map((income) => (
-            <View key={income.id} style={styles.incomeItem}>
-              <View style={styles.incomeInfo}>
-                <Text style={styles.incomeSource}>
-                  {income.source}
-                </Text>
-                <Text style={styles.incomeDate}>
-                  {income.date.toLocaleDateString('tr-TR')}
-                  {income.isRecurring && ' • Düzenli'}
-                </Text>
+          <View style={styles.card}>
+            {recentIncomes.map((income, index) => (
+              <View key={income.id}>
+                <View style={styles.incomeItem}>
+                  <View style={styles.incomeLeft}>
+                    <View style={styles.incomeIconContainer}>
+                      <Text style={styles.incomeIcon}>💰</Text>
+                    </View>
+                    <View style={styles.incomeInfo}>
+                      <Text style={styles.incomeSource}>{income.source}</Text>
+                      <View style={styles.incomeMeta}>
+                        <Text style={styles.incomeDate}>
+                          {income.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                        </Text>
+                        {income.isRecurring && (
+                          <>
+                            <Text style={styles.incomeDot}>•</Text>
+                            <Text style={styles.recurringBadge}>🔄 Düzenli</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.incomeAmount}>
+                    +₺{income.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                {index < recentIncomes.length - 1 && <View style={styles.itemDivider} />}
               </View>
-              <Text style={styles.incomeAmount}>+₺{income.amount.toFixed(2)}</Text>
-            </View>
-          ))
-        )}
-      </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Category Summary */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Kategori Özeti</Text>
-        <View style={styles.categoriesGrid}>
-          {Object.entries(summary.categoryExpenses).map(([category, amount]) => {
-            if (amount === 0) return null;
-            return (
-              <View key={category} style={styles.categoryCard}>
-                <Text style={styles.categoryName}>
-                  {MainCategoryNames[category as keyof typeof MainCategoryNames]}
-                </Text>
-                <Text style={styles.categoryAmount}>₺{amount.toFixed(0)}</Text>
-              </View>
-            );
-          })}
+      {Object.values(summary.categoryExpenses).some(amount => amount > 0) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>📊 Kategori Özeti</Text>
+          <View style={styles.categoriesGrid}>
+            {Object.entries(summary.categoryExpenses)
+              .filter(([_, amount]) => amount > 0)
+              .sort(([_, a], [__, b]) => b - a)
+              .map(([category, amount]) => {
+                const categoryPercentage = totalBudget > 0 ? (amount / totalBudget) * 100 : 0;
+                return (
+                  <View key={category} style={styles.categoryCard}>
+                    <View style={styles.categoryHeader}>
+                      <Text style={styles.categoryName}>
+                        {MainCategoryNames[category as keyof typeof MainCategoryNames]}
+                      </Text>
+                      <Text style={styles.categoryPercentage}>
+                        {categoryPercentage.toFixed(0)}%
+                      </Text>
+                    </View>
+                    <Text style={styles.categoryAmount}>
+                      ₺{amount.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                    </Text>
+                    <View style={styles.categoryProgressBar}>
+                      <View
+                        style={[
+                          styles.categoryProgressFill,
+                          { width: `${Math.min(categoryPercentage, 100)}%` }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Recent Expenses */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Son Harcamalar</Text>
-          <TouchableOpacity onPress={() => router.push('/expenses/list')}>
-            <Text style={styles.seeAllText}>Tümünü Gör</Text>
+          <Text style={styles.sectionTitle}>🛒 Son Harcamalar</Text>
+          <TouchableOpacity onPress={() => router.push('/expenses/list')} activeOpacity={0.7}>
+            <Text style={styles.seeAllText}>Tümünü Gör →</Text>
           </TouchableOpacity>
         </View>
-        
+
         {recentExpenses.length === 0 ? (
           <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>🎯</Text>
             <Text style={styles.emptyStateText}>Henüz harcama yok</Text>
             <Text style={styles.emptyStateSubtext}>İlk harcamanı ekleyerek başla!</Text>
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={() => router.push('/expenses/add')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emptyStateButtonText}>+ Harcama Ekle</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          recentExpenses.map((expense) => (
-            <View key={expense.id} style={styles.expenseItem}>
-              {expense.photoURL && (
-                <TouchableOpacity onPress={() => setSelectedImage(expense.photoURL!)}>
-                  <Image 
-                    source={{ uri: expense.photoURL }} 
-                    style={styles.expenseThumb}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              )}
-              <View style={styles.expenseInfo}>
-                <Text style={styles.expenseNote}>
-                  {expense.note || 'Not yok'}
-                </Text>
-                <Text style={styles.expenseDate}>
-                  {expense.date.toLocaleDateString('tr-TR')}
-                </Text>
+          <View style={styles.card}>
+            {recentExpenses.map((expense, index) => (
+              <View key={expense.id}>
+                <View style={styles.expenseItem}>
+                  {expense.photoURL ? (
+                    <TouchableOpacity
+                      onPress={() => setSelectedImage(expense.photoURL!)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: expense.photoURL }}
+                        style={styles.expenseThumb}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.expenseIconPlaceholder}>
+                      <Text style={styles.expensePlaceholderIcon}>🧾</Text>
+                    </View>
+                  )}
+                  <View style={styles.expenseInfo}>
+                    <Text style={styles.expenseNote} numberOfLines={1}>
+                      {expense.note || 'Harcama'}
+                    </Text>
+                    <Text style={styles.expenseDate}>
+                      {expense.date.toLocaleDateString('tr-TR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.expenseAmount}>
+                    -₺{expense.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                {index < recentExpenses.length - 1 && <View style={styles.itemDivider} />}
               </View>
-              <Text style={styles.expenseAmount}>₺{expense.amount.toFixed(2)}</Text>
-            </View>
-          ))
+            ))}
+          </View>
         )}
       </View>
 
@@ -243,18 +378,21 @@ export default function HomeScreen() {
       <Modal
         visible={!!selectedImage}
         transparent={true}
+        animationType="fade"
         onRequestClose={() => setSelectedImage(null)}
+        statusBarTranslucent
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackground}
             activeOpacity={1}
             onPress={() => setSelectedImage(null)}
           >
             <View style={styles.modalContent}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setSelectedImage(null)}
+                activeOpacity={0.8}
               >
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -276,127 +414,220 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
+  },
+  contentContainer: {
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     backgroundColor: '#fff',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
   date: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginTop: 4,
+    fontWeight: '500',
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileIcon: {
+    fontSize: 20,
   },
   budgetCard: {
     margin: 20,
-    padding: 20,
+    padding: 24,
     backgroundColor: '#007AFF',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    borderRadius: 20,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   budgetCardDanger: {
     backgroundColor: '#FF3B30',
+    shadowColor: '#FF3B30',
+  },
+  budgetCardWarning: {
+    backgroundColor: '#FF9500',
+    shadowColor: '#FF9500',
   },
   budgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   budgetLabel: {
-    fontSize: 14,
+    fontSize: 15,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
+    marginBottom: 4,
   },
-  daysLeft: {
+  budgetSubLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+  },
+  percentageContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  percentageText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
   budgetAmount: {
-    fontSize: 40,
+    fontSize: 42,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 16,
+    marginBottom: 8,
+    letterSpacing: -1,
   },
   budgetAmountDanger: {
     color: '#fff',
   },
+  overBudgetWarning: {
+    fontSize: 14,
+    color: '#FFD60A',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  progressBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
   progressBar: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 3,
-    marginBottom: 16,
+    flex: 1,
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#fff',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressFillDanger: {
     backgroundColor: '#FFD60A',
   },
+  progressFillWarning: {
+    backgroundColor: '#FFD60A',
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    minWidth: 40,
+    textAlign: 'right',
+  },
   budgetStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   stat: {
+    flex: 1,
     alignItems: 'center',
   },
-  statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+  statIcon: {
+    fontSize: 20,
     marginBottom: 4,
   },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
   statValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
   },
-  quickAddButton: {
-    marginHorizontal: 20,
-    marginBottom: 10,
-    padding: 16,
-    backgroundColor: '#34C759',
-    borderRadius: 12,
-    alignItems: 'center',
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  quickAddText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  incomeAddButton: {
-    marginHorizontal: 20,
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
     marginBottom: 20,
-    padding: 16,
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    alignItems: 'center',
   },
-  incomeAddText: {
-    fontSize: 16,
-    fontWeight: '600',
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  expenseButton: {
+    backgroundColor: '#34C759',
+  },
+  incomeButton: {
+    backgroundColor: '#007AFF',
+  },
+  quickActionIcon: {
+    fontSize: 20,
+  },
+  quickActionText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
   },
   section: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -405,13 +636,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A1A1A',
   },
   seeAllText: {
     fontSize: 14,
     color: '#007AFF',
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -420,118 +662,204 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     flex: 1,
-    minWidth: '45%',
-    maxWidth: '48%',
+    minWidth: (width - 64) / 2,
+    maxWidth: (width - 64) / 2,
     padding: 16,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
+    fontWeight: '600',
+    flex: 1,
+  },
+  categoryPercentage: {
+    fontSize: 11,
+    color: '#007AFF',
+    fontWeight: '700',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   categoryAmount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  categoryProgressBar: {
+    height: 4,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  categoryProgressFill: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 2,
   },
   expenseItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingVertical: 12,
   },
   expenseThumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     marginRight: 12,
+    backgroundColor: '#F0F0F0',
+  },
+  expenseIconPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expensePlaceholderIcon: {
+    fontSize: 24,
   },
   expenseInfo: {
     flex: 1,
+    marginRight: 12,
   },
   expenseNote: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#1A1A1A',
+    fontWeight: '600',
     marginBottom: 4,
   },
   expenseDate: {
     fontSize: 12,
     color: '#999',
+    fontWeight: '500',
   },
   expenseAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#FF3B30',
   },
   incomeItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  incomeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  incomeIconContainer: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  incomeIcon: {
+    fontSize: 20,
   },
   incomeInfo: {
     flex: 1,
   },
   incomeSource: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
+    fontSize: 15,
+    color: '#1A1A1A',
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  incomeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   incomeDate: {
     fontSize: 12,
     color: '#999',
+    fontWeight: '500',
+  },
+  incomeDot: {
+    fontSize: 10,
+    color: '#999',
+  },
+  recurringBadge: {
+    fontSize: 11,
+    color: '#34C759',
+    fontWeight: '600',
   },
   incomeAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#34C759',
   },
+  itemDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 4,
+  },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
+    padding: 48,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#333',
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
     color: '#999',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    backgroundColor: '#34C759',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyStateButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
   modalContainer: {
     flex: 1,
   },
   modalBackground: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -547,18 +875,20 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 60 : 40,
     right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   closeButtonText: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#fff',
     fontWeight: 'bold',
   },
