@@ -335,7 +335,12 @@ export default function HomeScreen() {
               .map(([category, amount]) => {
                 const categoryPercentage = totalBudget > 0 ? (amount / totalBudget) * 100 : 0;
                 return (
-                  <View key={category} style={styles.categoryCard}>
+                  <TouchableOpacity 
+                    key={category} 
+                    style={styles.categoryCard}
+                    onPress={() => router.push(`/expenses/list?category=${category}`)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.categoryHeader}>
                       <Text style={styles.categoryName}>
                         {MainCategoryNames[category as keyof typeof MainCategoryNames]}
@@ -355,7 +360,7 @@ export default function HomeScreen() {
                         ]}
                       />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
           </View>

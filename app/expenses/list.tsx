@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { expenseService } from '../../services/expenseService';
-import { Expense, CategoryNames, CategoryIcons } from '../../types';
+import { Expense, CategoryNames, CategoryIcons, MainCategory, getMainCategory, MainCategoryNames } from '../../types';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function ExpenseListScreen() {
@@ -19,6 +19,7 @@ export default function ExpenseListScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const filterDate = params.date as string | undefined;
+    const filterCategory = params.category as MainCategory | undefined;
     
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,18 +38,27 @@ export default function ExpenseListScreen() {
             const month = selectedMonth.getMonth() + 1;
             const data = await expenseService.getMonthlyExpenses(user.uid, year, month);
             
+            let filtered = data;
+            
             // Filter by specific date if provided
             if (filterDate) {
-                const filtered = data.filter(exp => {
+                filtered = filtered.filter(exp => {
                     const expDate = `${exp.date.getFullYear()}-${(exp.date.getMonth() + 1)
                         .toString()
                         .padStart(2, '0')}-${exp.date.getDate().toString().padStart(2, '0')}`;
                     return expDate === filterDate;
                 });
-                setExpenses(filtered);
-            } else {
-                setExpenses(data);
             }
+            
+            // Filter by category if provided
+            if (filterCategory) {
+                filtered = filtered.filter(exp => {
+                    const mainCat = getMainCategory(exp.category);
+                    return mainCat === filterCategory;
+                });
+            }
+            
+            setExpenses(filtered);
         } catch (error) {
             console.error('Error loading expenses:', error);
         } finally {
@@ -81,6 +91,11 @@ export default function ExpenseListScreen() {
     const filterDateDisplay = filterDate 
         ? new Date(filterDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
         : null;
+    
+    // Format category for display
+    const filterCategoryDisplay = filterCategory 
+        ? MainCategoryNames[filterCategory]
+        : null;
 
     const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -104,8 +119,18 @@ export default function ExpenseListScreen() {
                 </View>
             )}
             
+            {/* Category Filter Info */}
+            {filterCategoryDisplay && (
+                <View style={styles.filterInfo}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.clearFilterButton}>
+                        <Text style={styles.clearFilterText}>← Geri</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.filterText}>📊 {filterCategoryDisplay}</Text>
+                </View>
+            )}
+            
             {/* Month Selector */}
-            {!filterDate && (
+            {!filterDate && !filterCategory && (
                 <View style={styles.monthSelector}>
                     <TouchableOpacity onPress={previousMonth} style={styles.monthButton}>
                         <Text style={styles.monthButtonText}>◀</Text>
