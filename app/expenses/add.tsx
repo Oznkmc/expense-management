@@ -50,7 +50,7 @@ export default function AddExpenseScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
@@ -104,11 +104,19 @@ export default function AddExpenseScreen() {
         imageUri || undefined
       );
       
+      // Formu temizle
+      setAmount('');
+      setSelectedCategory(null);
+      setNote('');
+      setImageUri(null);
+      setExpandedMainCategory(null);
+      
       Alert.alert('Başarılı', 'Harcama eklendi', [
         { text: 'Tamam', onPress: () => router.back() }
       ]);
     } catch (error: any) {
-      Alert.alert('Hata', error.message);
+      console.error('Save error:', error);
+      Alert.alert('Hata', error.message || 'Harcama eklenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }

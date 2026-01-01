@@ -53,13 +53,19 @@ export const expenseService = {
 
   // Upload expense image to Firebase Storage
   async uploadExpenseImage(userId: string, imageUri: string): Promise<string> {
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-    const filename = `${Date.now()}.jpg`;
-    const storageRef = ref(storage, `expenses/${userId}/${filename}`);
-    
-    await uploadBytes(storageRef, blob);
-    return await getDownloadURL(storageRef);
+    try {
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const filename = `${Date.now()}.jpg`;
+      const storageRef = ref(storage, `expenses/${userId}/${filename}`);
+      
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    } catch (error) {
+      console.error('Storage upload error:', error);
+      // Storage hatası durumunda boş string döndür (fotoğraf olmadan devam et)
+      throw new Error('Fotoğraf yüklenemedi. Storage kurallarını kontrol edin.');
+    }
   },
 
   // Update an expense

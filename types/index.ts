@@ -142,6 +142,7 @@ export interface Income {
   userId: string;
   amount: number;
   type: IncomeType;
+  source: string; // Açık metin: "Maaş", "Harçlık", "Freelance" vb.
   date: Date;
   note?: string;
   isRecurring: boolean;

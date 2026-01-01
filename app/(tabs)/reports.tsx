@@ -57,6 +57,12 @@ export default function ReportsScreen() {
       current.totalIncome += userProfile.monthlyBudget;
       current.balance = current.totalIncome - current.totalExpenses;
 
+      // Önceki ay için de bütçe ekle
+      if (previous) {
+        previous.totalIncome += userProfile.monthlyBudget;
+        previous.balance = previous.totalIncome - previous.totalExpenses;
+      }
+
       setCurrentReport(current);
       setPreviousReport(previous);
       setTrend(trendData);
@@ -130,6 +136,44 @@ export default function ReportsScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Daily Expenses */}
+      {currentReport.dailyExpenses && Object.keys(currentReport.dailyExpenses).length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Günlük Harcamalar</Text>
+          <View style={styles.chartContainer}>
+            {Object.entries(currentReport.dailyExpenses)
+              .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+              .map(([date, amount]) => {
+                const dateObj = new Date(date);
+                const dayName = dateObj.toLocaleDateString('tr-TR', { weekday: 'short' });
+                const dayNum = dateObj.getDate();
+                const isToday = dateObj.toDateString() === new Date().toDateString();
+                
+                return (
+                  <View key={date} style={[styles.dailyRow, isToday && styles.dailyRowToday]}>
+                    <View style={styles.dailyDate}>
+                      <Text style={[styles.dayName, isToday && styles.todayText]}>{dayName}</Text>
+                      <Text style={[styles.dayNum, isToday && styles.todayText]}>{dayNum}</Text>
+                    </View>
+                    <View style={styles.dailyBar}>
+                      <View 
+                        style={[
+                          styles.dailyBarFill, 
+                          { width: `${Math.min((amount / Math.max(...Object.values(currentReport.dailyExpenses))) * 100, 100)}%` },
+                          isToday && styles.dailyBarToday
+                        ]} 
+                      />
+                    </View>
+                    <Text style={[styles.dailyAmount, isToday && styles.todayText]}>
+                      ₺{amount.toFixed(0)}
+                    </Text>
+                  </View>
+                );
+              })}
+          </View>
+        </View>
+      )}
 
       {/* Category Breakdown */}
       {categoryData.length > 0 && (
@@ -352,6 +396,60 @@ const styles = StyleSheet.create({
   categoryValue: {
     fontSize: 12,
     color: '#666',
+  },
+  dailyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dailyRowToday: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginVertical: 2,
+  },
+  dailyDate: {
+    width: 50,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  dayName: {
+    fontSize: 12,
+    color: '#999',
+    textTransform: 'uppercase',
+  },
+  dayNum: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  todayText: {
+    color: '#007AFF',
+  },
+  dailyBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  dailyBarFill: {
+    height: '100%',
+    backgroundColor: '#FF3B30',
+    borderRadius: 4,
+  },
+  dailyBarToday: {
+    backgroundColor: '#007AFF',
+  },
+  dailyAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 70,
+    textAlign: 'right',
   },
   trendChart: {
     flexDirection: 'row',

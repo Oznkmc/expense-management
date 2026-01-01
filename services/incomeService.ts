@@ -18,16 +18,18 @@ export const incomeService = {
   async addIncome(
     userId: string,
     amount: number,
-    type: IncomeType,
+    source: string,
     date: Date,
-    note?: string,
     isRecurring: boolean = false,
+    note?: string,
+    type: IncomeType = IncomeType.OTHER,
     recurringDay?: number
   ): Promise<string> {
     const incomeData = {
       userId,
       amount,
       type,
+      source,
       date: Timestamp.fromDate(date),
       note: note || '',
       isRecurring,
