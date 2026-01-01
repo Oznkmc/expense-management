@@ -733,4 +733,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 6,
     },
+    errorText: {
+        fontSize: 12,
+        color: '#FF3B30',
+        marginTop: 6,
+        marginLeft: 4,
+    },
 });
