@@ -37,27 +37,19 @@ export default function RootLayout() {
             <Stack.Screen name="auth/setup" options={{ headerShown: false }} />
             <Stack.Screen name="expenses/add" options={{
               presentation: 'modal',
-              headerShown: true,
-              headerTitle: 'Harcama Ekle',
-              headerBackTitle: 'Geri'
+              headerShown: false
             }} />
             <Stack.Screen name="expenses/list" options={{
               presentation: 'card',
-              headerShown: true,
-              headerTitle: 'Harcama Listesi',
-              headerBackTitle: 'Geri'
+              headerShown: false
             }} />
             <Stack.Screen name="incomes/add" options={{
               presentation: 'modal',
-              headerShown: true,
-              headerTitle: 'Gelir Ekle',
-              headerBackTitle: 'Geri'
+              headerShown: false
             }} />
             <Stack.Screen name="incomes/list" options={{
               presentation: 'card',
-              headerShown: true,
-              headerTitle: 'Gelirler Listesi',
-              headerBackTitle: 'Geri'
+              headerShown: false
             }} />
           </Stack>
           <StatusBar style="auto" />

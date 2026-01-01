@@ -97,10 +97,10 @@ export default function ExpenseListScreen() {
             {/* Date Filter Info */}
             {filterDateDisplay && (
                 <View style={styles.filterInfo}>
-                    <Text style={styles.filterText}>📅 {filterDateDisplay}</Text>
                     <TouchableOpacity onPress={() => router.back()} style={styles.clearFilterButton}>
                         <Text style={styles.clearFilterText}>← Geri</Text>
                     </TouchableOpacity>
+                    <Text style={styles.filterText}>📅 {filterDateDisplay}</Text>
                 </View>
             )}
             
@@ -360,6 +360,7 @@ const styles = StyleSheet.create({
     filterInfo: {
         backgroundColor: '#E3F2FD',
         padding: 16,
+        paddingTop: 60,
         marginBottom: 12,
         borderRadius: 12,
         flexDirection: 'row',
@@ -370,6 +371,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#1976D2',
+        flex: 1,
+        textAlign: 'center',
     },
     clearFilterButton: {
         paddingHorizontal: 12,
