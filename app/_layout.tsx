@@ -52,6 +52,12 @@ export default function RootLayout() {
             headerTitle: 'Gelir Ekle',
             headerBackTitle: 'Geri'
           }} />
+          <Stack.Screen name="incomes/list" options={{
+            presentation: 'card',
+            headerShown: true,
+            headerTitle: 'Gelirler Listesi',
+            headerBackTitle: 'Geri'
+          }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />
