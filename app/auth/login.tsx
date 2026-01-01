@@ -194,7 +194,7 @@ export default function LoginScreen() {
                 >
                     <View style={styles.header}>
                         <View style={styles.iconContainer}>
-                            <Text style={styles.icon}>💰</Text>
+                            <Text style={styles.icon}>💸</Text>
                         </View>
                         <Text style={styles.title}>Harcama Takip</Text>
                         <Text style={styles.subtitle}>
