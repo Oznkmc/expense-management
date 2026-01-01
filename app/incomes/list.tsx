@@ -92,6 +92,15 @@ export default function IncomeListScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            {/* Back Button */}
+            <View style={styles.topBar}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Text style={styles.backButtonText}>← Geri</Text>
+                </TouchableOpacity>
+                <Text style={styles.topBarTitle}>Gelirler Listesi</Text>
+                <View style={styles.headerSpacer} />
+            </View>
+            
             {/* Month Selector */}
             <View style={styles.monthSelector}>
                 <TouchableOpacity onPress={previousMonth} style={styles.monthButton}>
@@ -175,6 +184,39 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+    },
+    topBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 60,
+        paddingBottom: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        gap: 4,
+    },
+    backButtonText: {
+        fontSize: 15,
+        color: '#007AFF',
+        fontWeight: '600',
+    },
+    topBarTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+    },
+    headerSpacer: {
+        width: 60,
     },
     loadingContainer: {
         flex: 1,

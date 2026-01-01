@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
-import { MonthlyReport, MainCategoryNames } from '../../types';
+import { incomeService } from '../../services/incomeService';
+import { MonthlyReport, MainCategoryNames, Income } from '../../types';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import { Swipeable } from 'react-native-gesture-handler';
 
 interface CategoryData {
     name: string;
@@ -29,6 +31,7 @@ export default function ReportsScreen() {
     const [currentReport, setCurrentReport] = useState<MonthlyReport | null>(null);
     const [previousReport, setPreviousReport] = useState<MonthlyReport | null>(null);
     const [trend, setTrend] = useState<{ months: string[]; expenses: number[]; incomes: number[] } | null>(null);
+    const [recentIncomes, setRecentIncomes] = useState<Income[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -64,10 +67,11 @@ export default function ReportsScreen() {
                 prevYear -= 1;
             }
 
-            const [current, previous, trendData] = await Promise.all([
+            const [current, previous, trendData, incomes] = await Promise.all([
                 budgetService.getMonthlyReport(user.uid, year, month),
                 budgetService.getMonthlyReport(user.uid, prevYear, prevMonth),
-                budgetService.getSpendingTrend(user.uid)
+                budgetService.getSpendingTrend(user.uid),
+                incomeService.getMonthlyIncomes(user.uid, year, month)
             ]);
 
             // Aylık bütçeyi gelire ekle
@@ -82,6 +86,7 @@ export default function ReportsScreen() {
             setCurrentReport(current);
             setPreviousReport(previous);
             setTrend(trendData);
+            setRecentIncomes(incomes.slice(0, 5));
 
             // Animasyon başlat
             Animated.timing(fadeAnim, {
@@ -146,6 +151,32 @@ export default function ReportsScreen() {
                 };
             });
     }, [currentReport]);
+
+    const confirmDeleteIncome = (incomeId: string) => {
+        Alert.alert('Sil', 'Bu geliri silmek istediğine emin misin?', [
+            { text: 'İptal', style: 'cancel' },
+            {
+                text: 'Sil',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await incomeService.deleteIncome(incomeId);
+                        setRecentIncomes((prev) => prev.filter((i) => i.id !== incomeId));
+                        loadReports();
+                    } catch (err) {
+                        Alert.alert('Hata', 'Gelir silinirken bir sorun oluştu');
+                    }
+                }
+            }
+        ]);
+    };
+
+    const renderDeleteAction = (onPress: () => void) => (
+        <TouchableOpacity style={styles.swipeAction} onPress={onPress} activeOpacity={0.8}>
+            <Text style={styles.swipeDeleteIcon}>🗑️</Text>
+            <Text style={styles.swipeDeleteText}>Sil</Text>
+        </TouchableOpacity>
+    );
 
     if (loading && !refreshing) {
         return (
@@ -241,6 +272,54 @@ export default function ReportsScreen() {
                                 </Text>
                             </View>
                         </View>
+
+                        {/* Recent Incomes */}
+                        {recentIncomes.length > 0 && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>💼 Bu Ayki Gelirler</Text>
+                                    <TouchableOpacity onPress={() => router.push('/incomes/list')} activeOpacity={0.7}>
+                                        <Text style={styles.seeAllText}>Tümünü Gör →</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    {recentIncomes.map((income, index) => (
+                                        <View key={income.id}>
+                                            <Swipeable
+                                                renderRightActions={() => renderDeleteAction(() => confirmDeleteIncome(income.id))}
+                                                overshootRight={false}
+                                            >
+                                                <View style={styles.incomeItem}>
+                                                    <View style={styles.incomeLeft}>
+                                                        <View style={styles.incomeIconContainer}>
+                                                            <Text style={styles.incomeIcon}>💰</Text>
+                                                        </View>
+                                                        <View style={styles.incomeInfo}>
+                                                            <Text style={styles.incomeSource}>{income.source}</Text>
+                                                            <View style={styles.incomeMeta}>
+                                                                <Text style={styles.incomeDate}>
+                                                                    {income.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                                                                </Text>
+                                                                {income.isRecurring && (
+                                                                    <>
+                                                                        <Text style={styles.incomeDot}>•</Text>
+                                                                        <Text style={styles.recurringBadge}>🔄 Düzenli</Text>
+                                                                    </>
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                    <Text style={styles.incomeAmount}>
+                                                        +₺{income.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                                    </Text>
+                                                </View>
+                                            </Swipeable>
+                                            {index < recentIncomes.length - 1 && <View style={styles.itemDivider} />}
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
 
                         {/* Daily Expenses */}
                         {sortedDailyExpenses.length > 0 && (
@@ -737,6 +816,97 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: 'bold',
         color: '#FF3B30',
+    },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    seeAllText: {
+        fontSize: 14,
+        color: '#007AFF',
+        fontWeight: '600',
+    },
+    incomeItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+    },
+    incomeLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    incomeIconContainer: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#E8F5E9',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    incomeIcon: {
+        fontSize: 20,
+    },
+    incomeInfo: {
+        flex: 1,
+    },
+    incomeSource: {
+        fontSize: 15,
+        color: '#1A1A1A',
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    incomeMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    incomeDate: {
+        fontSize: 12,
+        color: '#999',
+        fontWeight: '500',
+    },
+    incomeDot: {
+        fontSize: 10,
+        color: '#999',
+    },
+    recurringBadge: {
+        fontSize: 11,
+        color: '#34C759',
+        fontWeight: '600',
+    },
+    incomeAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#34C759',
+    },
+    itemDivider: {
+        height: 1,
+        backgroundColor: '#F0F0F0',
+        marginVertical: 4,
+    },
+    swipeAction: {
+        backgroundColor: '#FFE8E8',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 80,
+        marginVertical: 2,
+        borderTopRightRadius: 12,
+        borderBottomRightRadius: 12,
+    },
+    swipeDeleteIcon: {
+        fontSize: 18,
+        marginBottom: 2,
+    },
+    swipeDeleteText: {
+        color: '#D32F2F',
+        fontWeight: '700',
+        fontSize: 12,
     },
     footer: {
         height: 60,

@@ -183,61 +183,65 @@ export default function HomeScreen() {
       </View>
 
       {/* Main Budget Card */}
-      <View style={[
-        styles.budgetCard,
-        isOverBudget && styles.budgetCardDanger,
-        isWarning && styles.budgetCardWarning
-      ]}>
-        <View style={styles.budgetHeader}>
-          <View>
-            <Text style={styles.budgetLabel}>Kalan Bütçe</Text>
-            <Text style={styles.budgetSubLabel}>
-              {summary.daysLeft} gün kaldı • {getBudgetStatusEmoji(budgetPercentage)}
-            </Text>
+      <TouchableOpacity 
+        onPress={() => router.push('/(tabs)/reports')}
+        activeOpacity={0.7}
+      >
+        <View style={[
+          styles.budgetCard,
+          isOverBudget && styles.budgetCardDanger,
+          isWarning && styles.budgetCardWarning
+        ]}>
+          <View style={styles.budgetHeader}>
+            <View>
+              <Text style={styles.budgetLabel}>Kalan Bütçe</Text>
+              <Text style={styles.budgetSubLabel}>
+                {summary.daysLeft} gün kaldı • {getBudgetStatusEmoji(budgetPercentage)}
+              </Text>
+            </View>
+            <View style={styles.percentageContainer}>
+              <Text style={styles.percentageText}>
+                {budgetPercentage.toFixed(0)}%
+              </Text>
+            </View>
           </View>
-          <View style={styles.percentageContainer}>
-            <Text style={styles.percentageText}>
-              {budgetPercentage.toFixed(0)}%
-            </Text>
-          </View>
-        </View>
 
-        <Text style={[styles.budgetAmount, isOverBudget && styles.budgetAmountDanger]}>
-          ₺{Math.abs(summary.remaining).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </Text>
-
-        {isOverBudget && (
-          <Text style={styles.overBudgetWarning}>Bütçe aşıldı!</Text>
-        )}
-
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${Math.min(budgetPercentage, 100)}%` },
-                isOverBudget && styles.progressFillDanger,
-                isWarning && styles.progressFillWarning
-              ]}
-            />
-          </View>
-          <Text style={styles.progressText}>
-            {budgetPercentage.toFixed(1)}%
+          <Text style={[styles.budgetAmount, isOverBudget && styles.budgetAmountDanger]}>
+            ₺{Math.abs(summary.remaining).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
-        </View>
 
-        <View style={styles.budgetStats}>
-          <View style={styles.stat}>
-            <Text style={styles.statIcon}>💰</Text>
-            <Text style={styles.statLabel}>Toplam</Text>
-            <Text style={styles.statValue}>
-              ₺{totalBudget.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+          {isOverBudget && (
+            <Text style={styles.overBudgetWarning}>Bütçe aşıldı!</Text>
+          )}
+
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.min(budgetPercentage, 100)}%` },
+                  isOverBudget && styles.progressFillDanger,
+                  isWarning && styles.progressFillWarning
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {budgetPercentage.toFixed(1)}%
             </Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statIcon}>📉</Text>
-            <Text style={styles.statLabel}>Harcama</Text>
+
+          <View style={styles.budgetStats}>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>💰</Text>
+              <Text style={styles.statLabel}>Toplam</Text>
+              <Text style={styles.statValue}>
+                ₺{totalBudget.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>📉</Text>
+              <Text style={styles.statLabel}>Harcama</Text>
             <Text style={styles.statValue}>
               ₺{summary.totalExpenses.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
             </Text>
@@ -251,7 +255,8 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
-      </View>
+        </View>
+      </TouchableOpacity>
 
       {/* Quick Action Buttons */}
       <View style={styles.quickActions}>
@@ -274,56 +279,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Recent Incomes */}
-      {recentIncomes.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>💼 Bu Ayki Gelirler</Text>
-            <TouchableOpacity onPress={() => router.push('/incomes/list')} activeOpacity={0.7}>
-              <Text style={styles.seeAllText}>Tümünü Gör →</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.card}>
-            {recentIncomes.map((income, index) => (
-              <View key={income.id}>
-                <Swipeable
-                  renderRightActions={() => renderDeleteAction(() => confirmDeleteIncome(income.id))}
-                  overshootRight={false}
-                >
-                  <View style={styles.incomeItem}>
-                    <View style={styles.incomeLeft}>
-                      <View style={styles.incomeIconContainer}>
-                        <Text style={styles.incomeIcon}>💰</Text>
-                      </View>
-                      <View style={styles.incomeInfo}>
-                        <Text style={styles.incomeSource}>{income.source}</Text>
-                        <View style={styles.incomeMeta}>
-                          <Text style={styles.incomeDate}>
-                            {income.date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                          </Text>
-                          {income.isRecurring && (
-                            <>
-                              <Text style={styles.incomeDot}>•</Text>
-                              <Text style={styles.recurringBadge}>🔄 Düzenli</Text>
-                            </>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.itemActions}>
-                      <Text style={styles.incomeAmount}>
-                        +₺{income.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                      </Text>
-                    </View>
-                  </View>
-                </Swipeable>
-                {index < recentIncomes.length - 1 && <View style={styles.itemDivider} />}
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
       {/* Category Summary */}
       {Object.values(summary.categoryExpenses).some(amount => amount > 0) && (
         <View style={styles.section}>
@@ -333,7 +288,7 @@ export default function HomeScreen() {
               .filter(([_, amount]) => amount > 0)
               .sort(([_, a], [__, b]) => b - a)
               .map(([category, amount]) => {
-                const categoryPercentage = totalBudget > 0 ? (amount / totalBudget) * 100 : 0;
+                const categoryPercentage = summary.totalExpenses > 0 ? (amount / summary.totalExpenses) * 100 : 0;
                 return (
                   <TouchableOpacity 
                     key={category} 

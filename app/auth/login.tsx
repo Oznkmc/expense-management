@@ -19,6 +19,7 @@ export default function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [loading, setLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -33,9 +34,32 @@ export default function LoginScreen() {
     const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
     const validatePassword = (text: string) => text.length >= 6;
 
+    const getPasswordStrength = (password: string) => {
+        if (password.length < 6) return 'Zayıf';
+        
+        const hasLetters = /[a-zA-Z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        
+        // Harf ve rakam varsa: Orta (sarı)
+        if (hasLetters && hasNumbers && !hasSpecialChar) return 'Orta';
+        
+        // Harf, rakam ve özel karakter varsa: Güçlü (yeşil)
+        if (hasLetters && hasNumbers && hasSpecialChar) return 'Güçlü';
+        
+        // Diğer durumlar: Zayıf (kırmızı)
+        return 'Zayıf';
+    };
+
     const handleSubmit = async () => {
         if (!email.trim() || !password.trim() || (!isLogin && !displayName.trim())) {
             Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurun');
+            return;
+        }
+
+        // Kayıt modunda şifre eşleşmesini kontrol et
+        if (!isLogin && password !== confirmPassword) {
+            Alert.alert('Şifre Uyuşmazlığı', 'Girdiğiniz şifreler birbirini eşleşmiyor. Lütfen kontrol edin.');
             return;
         }
 
@@ -61,6 +85,7 @@ export default function LoginScreen() {
                             onPress: () => {
                                 setEmail('');
                                 setPassword('');
+                                setConfirmPassword('');
                                 setDisplayName('');
                                 setIsLogin(true);
                             }
@@ -82,6 +107,7 @@ export default function LoginScreen() {
                         text: 'Giriş Yap',
                         onPress: () => {
                             setPassword('');
+                            setConfirmPassword('');
                             setDisplayName('');
                             setIsLogin(true);
                             setFocusedField(null);
@@ -151,7 +177,9 @@ export default function LoginScreen() {
         setIsLogin(!isLogin);
         setEmail('');
         setPassword('');
+        setConfirmPassword('');
         setDisplayName('');
+        setShowPassword(false);
         setFocusedField(null);
     };
 
@@ -177,7 +205,7 @@ export default function LoginScreen() {
     // Buton aktiflik kontrolü
     const isFormValid = isLogin
         ? (email.trim() && password.length >= 6)
-        : (email.trim() && password.length >= 6 && displayName.trim().length >= 2);
+        : (email.trim() && password.length >= 6 && displayName.trim().length >= 2 && password === confirmPassword);
 
     return (
         <View style={styles.container}>
@@ -257,12 +285,12 @@ export default function LoginScreen() {
                             <View style={[
                                 styles.inputWrapper,
                                 focusedField === 'password' && styles.inputWrapperFocused,
-                                (password.length > 0 && !validatePassword(password)) && styles.inputWrapperError
+                                !isLogin && (password.length > 0 && !validatePassword(password)) && styles.inputWrapperError
                             ]}>
                                 <Text style={styles.inputIcon}>🔒</Text>
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="En az 6 karakter"
+                                    placeholder="Şifreniz"
                                     placeholderTextColor="#999"
                                     value={password}
                                     onChangeText={setPassword}
@@ -287,6 +315,53 @@ export default function LoginScreen() {
                                 </TouchableOpacity>
                             )}
                         </View>
+
+                        {/* ŞİFRE TEKRARI (Sadece Kayıt) */}
+                        {!isLogin && (
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.label}>Şifre Tekrarı</Text>
+                                <View style={[
+                                    styles.inputWrapper,
+                                    focusedField === 'confirmPassword' && styles.inputWrapperFocused,
+                                    confirmPassword.length > 0 && password !== confirmPassword && styles.inputWrapperError
+                                ]}>
+                                    <Text style={styles.inputIcon}>🔒</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="Şifreyi tekrar girin"
+                                        placeholderTextColor="#999"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry={!showPassword}
+                                        onFocus={() => setFocusedField('confirmPassword')}
+                                        onBlur={() => setFocusedField(null)}
+                                        editable={!loading}
+                                    />
+                                </View>
+                                {confirmPassword.length > 0 && password !== confirmPassword && (
+                                    <Text style={styles.errorText}>Şifreler eşleşmiyor</Text>
+                                )}
+                            </View>
+                        )}
+
+                        {/* ŞİFRE GÜCÜ (Sadece Kayıt) */}
+                        {!isLogin && password.length > 0 && (
+                            <View style={styles.passwordStrengthContainer}>
+                                <View style={styles.strengthBar}>
+                                    <View
+                                        style={[
+                                            styles.strengthFill,
+                                            {
+                                                width: getPasswordStrength(password) === 'Zayıf' ? '33%' :
+                                                       getPasswordStrength(password) === 'Orta' ? '66%' : '100%',
+                                                backgroundColor: getPasswordStrength(password) === 'Zayıf' ? '#FF3B30' :
+                                                               getPasswordStrength(password) === 'Orta' ? '#FFCC00' : '#34C759'
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                        )}
 
                         {/* SUBMIT BUTTON */}
                         <TouchableOpacity
@@ -639,5 +714,23 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 12,
         color: '#999',
+    },
+    passwordStrengthContainer: {
+        marginBottom: 16,
+    },
+    strengthBar: {
+        height: 14,
+        backgroundColor: '#E8E8E8',
+        borderRadius: 7,
+        overflow: 'hidden',
+    },
+    strengthFill: {
+        height: '100%',
+        borderRadius: 7,
+    },
+    strengthText: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 6,
     },
 });
