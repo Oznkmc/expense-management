@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
 import { MonthlyReport, MainCategoryNames } from '../../types';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 interface CategoryData {
     name: string;
@@ -24,6 +25,7 @@ interface CategoryData {
 
 export default function ReportsScreen() {
     const { user, userProfile } = useAuth();
+    const router = useRouter();
     const [currentReport, setCurrentReport] = useState<MonthlyReport | null>(null);
     const [previousReport, setPreviousReport] = useState<MonthlyReport | null>(null);
     const [trend, setTrend] = useState<{ months: string[]; expenses: number[]; incomes: number[] } | null>(null);
@@ -246,9 +248,11 @@ export default function ReportsScreen() {
                                 <Text style={styles.sectionTitle}>📅 Günlük Harcamalar</Text>
                                 <View style={styles.chartContainer}>
                                     {sortedDailyExpenses.map((item) => (
-                                        <View
+                                        <TouchableOpacity
                                             key={item.date}
                                             style={[styles.dailyRow, item.isToday && styles.dailyRowToday]}
+                                            onPress={() => router.push(`/expenses/list?date=${item.date}`)}
+                                            activeOpacity={0.7}
                                         >
                                             <View style={styles.dailyDate}>
                                                 <Text style={[styles.dayName, item.isToday && styles.todayText]}>
@@ -270,7 +274,7 @@ export default function ReportsScreen() {
                                             <Text style={[styles.dailyAmount, item.isToday && styles.todayText]}>
                                                 ₺{item.amount.toLocaleString('tr-TR')}
                                             </Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     ))}
                                 </View>
                             </View>

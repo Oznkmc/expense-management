@@ -12,11 +12,14 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { expenseService } from '../../services/expenseService';
 import { Expense, CategoryNames, CategoryIcons } from '../../types';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 export default function ExpenseListScreen() {
     const { user } = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const filterDate = params.date as string | undefined;
+    
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -33,7 +36,19 @@ export default function ExpenseListScreen() {
             const year = selectedMonth.getFullYear();
             const month = selectedMonth.getMonth() + 1;
             const data = await expenseService.getMonthlyExpenses(user.uid, year, month);
-            setExpenses(data);
+            
+            // Filter by specific date if provided
+            if (filterDate) {
+                const filtered = data.filter(exp => {
+                    const expDate = `${exp.date.getFullYear()}-${(exp.date.getMonth() + 1)
+                        .toString()
+                        .padStart(2, '0')}-${exp.date.getDate().toString().padStart(2, '0')}`;
+                    return expDate === filterDate;
+                });
+                setExpenses(filtered);
+            } else {
+                setExpenses(data);
+            }
         } catch (error) {
             console.error('Error loading expenses:', error);
         } finally {
@@ -61,6 +76,11 @@ export default function ExpenseListScreen() {
         month: 'long',
         year: 'numeric'
     });
+    
+    // Format filter date for display
+    const filterDateDisplay = filterDate 
+        ? new Date(filterDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
 
     const totalAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
@@ -74,20 +94,32 @@ export default function ExpenseListScreen() {
 
     return (
         <View style={styles.container}>
+            {/* Date Filter Info */}
+            {filterDateDisplay && (
+                <View style={styles.filterInfo}>
+                    <Text style={styles.filterText}>📅 {filterDateDisplay}</Text>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.clearFilterButton}>
+                        <Text style={styles.clearFilterText}>← Geri</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+            
             {/* Month Selector */}
-            <View style={styles.monthSelector}>
-                <TouchableOpacity onPress={previousMonth} style={styles.monthButton}>
-                    <Text style={styles.monthButtonText}>◀</Text>
-                </TouchableOpacity>
-                <Text style={styles.monthText}>{monthName}</Text>
-                <TouchableOpacity
-                    onPress={nextMonth}
-                    style={styles.monthButton}
+            {!filterDate && (
+                <View style={styles.monthSelector}>
+                    <TouchableOpacity onPress={previousMonth} style={styles.monthButton}>
+                        <Text style={styles.monthButtonText}>◀</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.monthText}>{monthName}</Text>
+                    <TouchableOpacity
+                        onPress={nextMonth}
+                        style={styles.monthButton}
                     disabled={new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1) > new Date()}
                 >
                     <Text style={styles.monthButtonText}>▶</Text>
                 </TouchableOpacity>
             </View>
+            )}
 
             {/* Total */}
             <View style={styles.totalCard}>
@@ -324,6 +356,31 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#fff',
         fontWeight: 'bold',
+    },
+    filterInfo: {
+        backgroundColor: '#E3F2FD',
+        padding: 16,
+        marginBottom: 12,
+        borderRadius: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    filterText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1976D2',
+    },
+    clearFilterButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+    },
+    clearFilterText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1976D2',
     },
     categoryName: {
         fontSize: 16,
