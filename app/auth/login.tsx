@@ -167,6 +167,18 @@ export default function LoginScreen() {
                 errorMessage = 'Girdiğiniz şifre hatalı. Lütfen tekrar deneyin.';
             }
 
+            // Geçersiz giriş bilgileri hatası (Firebase v9+)
+            if (error.code === 'auth/invalid-credential' || errorMessage.includes('invalid-credential')) {
+                errorTitle = 'Giriş Başarısız';
+                errorMessage = 'E-posta veya şifre hatalı. Lütfen kontrol edip tekrar deneyin.';
+            }
+
+            // Çok fazla deneme hatası
+            if (error.code === 'auth/too-many-requests' || errorMessage.includes('too-many-requests')) {
+                errorTitle = 'Çok Fazla Deneme';
+                errorMessage = 'Bu hesap geçici olarak kilitlendi. Lütfen daha sonra tekrar deneyin veya şifrenizi sıfırlayın.';
+            }
+
             Alert.alert(errorTitle, errorMessage);
         } finally {
             setLoading(false);
@@ -204,7 +216,7 @@ export default function LoginScreen() {
 
     // Buton aktiflik kontrolü
     const isFormValid = isLogin
-        ? (email.trim() && password.length >= 6)
+        ? (email.trim() && password.trim())
         : (email.trim() && password.length >= 6 && displayName.trim().length >= 2 && password === confirmPassword);
 
     return (
@@ -367,10 +379,10 @@ export default function LoginScreen() {
                         <TouchableOpacity
                             style={[
                                 styles.button,
-                                (!isFormValid || loading) && styles.buttonDisabled
+                                loading && styles.buttonDisabled
                             ]}
                             onPress={handleSubmit}
-                            disabled={!isFormValid || loading}
+                            disabled={loading}
                         >
                             {loading ? (
                                 <View style={styles.loadingContainer}>
