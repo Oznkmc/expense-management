@@ -23,7 +23,8 @@ export const expenseService = {
     category: ExpenseCategory,
     date: Date,
     note?: string,
-    imageUri?: string
+    imageUri?: string,
+    tags?: string[]
   ): Promise<string> {
     let photoURL: string | undefined;
 
@@ -45,6 +46,11 @@ export const expenseService = {
     // Sadece photoURL varsa ekle
     if (photoURL) {
       expenseData.photoURL = photoURL;
+    }
+
+    // Tags varsa ekle
+    if (tags && tags.length > 0) {
+      expenseData.tags = tags;
     }
 
     const docRef = await addDoc(collection(db, 'expenses'), expenseData);

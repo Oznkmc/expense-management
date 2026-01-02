@@ -119,6 +119,7 @@ export interface Expense {
   date: Date;
   note?: string;
   photoURL?: string;
+  tags?: string[]; // Tag IDs
   createdAt: Date;
   updatedAt: Date;
 }
@@ -147,6 +148,7 @@ export interface Income {
   note?: string;
   isRecurring: boolean;
   recurringDay?: number; // Day of month (1-31)
+  tags?: string[]; // Tag IDs
   createdAt: Date;
   updatedAt: Date;
 }
@@ -263,3 +265,27 @@ export interface RecurringExpense {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Tag System
+export interface Tag {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  icon?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const TagColors = [
+  { value: '#FF6B6B', name: 'Kırmızı' },
+  { value: '#4ECDC4', name: 'Turkuaz' },
+  { value: '#45B7D1', name: 'Mavi' },
+  { value: '#FFA07A', name: 'Turuncu' },
+  { value: '#98D8C8', name: 'Yeşil' },
+  { value: '#6C5CE7', name: 'Mor' },
+  { value: '#FF6B9D', name: 'Pembe' },
+  { value: '#F9CA24', name: 'Sarı' },
+  { value: '#95A5A6', name: 'Gri' },
+  { value: '#00B894', name: 'Nane Yeşili' },
+];

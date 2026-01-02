@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { incomeService } from '../../services/incomeService';
+import { tagService } from '../../services/tagService';
+import { Tag } from '../../types';
 import { useRouter } from 'expo-router';
 
 export default function AddIncomeScreen() {
@@ -25,6 +27,38 @@ export default function AddIncomeScreen() {
     const [isRecurring, setIsRecurring] = useState(false);
     const [loading, setLoading] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+
+    // Tags
+    const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [tagsLoading, setTagsLoading] = useState(true);
+
+    // Load tags on mount
+    React.useEffect(() => {
+        if (user) {
+            loadTags();
+        }
+    }, [user]);
+
+    const loadTags = async () => {
+        if (!user) return;
+        try {
+            const tags = await tagService.getTags(user.uid);
+            setAvailableTags(tags);
+        } catch (error) {
+            console.error('Tags load error:', error);
+        } finally {
+            setTagsLoading(false);
+        }
+    };
+
+    const toggleTag = (tagId: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tagId) 
+                ? prev.filter(id => id !== tagId)
+                : [...prev, tagId]
+        );
+    };
 
     // Önceden tanımlı gelir kaynakları
     const predefinedSources = [
@@ -66,7 +100,8 @@ export default function AddIncomeScreen() {
                 source.trim(),
                 new Date(),
                 isRecurring,
-                note.trim()
+                note.trim(),
+                selectedTags.length > 0 ? selectedTags : undefined
             );
 
             // Formu temizle
@@ -74,6 +109,7 @@ export default function AddIncomeScreen() {
             setSource('');
             setNote('');
             setIsRecurring(false);
+            setSelectedTags([]);
 
             Alert.alert('Başarılı! 🎉', 'Gelir başarıyla eklendi', [
                 {
@@ -223,7 +259,40 @@ export default function AddIncomeScreen() {
                             )}
                         </View>
                     </View>
-
+                    {/* Tags */}
+                    {availableTags.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.label}>🏷️ Etiketler (Opsiyonel)</Text>
+                                <TouchableOpacity onPress={() => router.push('/tags/manage')}>
+                                    <Text style={styles.manageTags}>Yönet →</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.tagsContainer}>
+                                {availableTags.map(tag => (
+                                    <TouchableOpacity
+                                        key={tag.id}
+                                        style={[
+                                            styles.tagChip,
+                                            { backgroundColor: selectedTags.includes(tag.id) ? tag.color : '#F3F4F6' }
+                                        ]}
+                                        onPress={() => toggleTag(tag.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        {tag.icon && (
+                                            <Text style={styles.tagIcon}>{tag.icon}</Text>
+                                        )}
+                                        <Text style={[
+                                            styles.tagText,
+                                            { color: selectedTags.includes(tag.id) ? '#fff' : '#6B7280' }
+                                        ]}>
+                                            {tag.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    )}
                     {/* Note */}
                     <View style={styles.section}>
                         <Text style={styles.label}>📋 Not (Opsiyonel)</Text>
@@ -571,6 +640,39 @@ const styles = StyleSheet.create({
         color: '#999',
         textAlign: 'right',
         marginTop: 8,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    manageTags: {
+        fontSize: 13,
+        color: '#2563EB',
+        fontWeight: '600',
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    tagChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        gap: 4,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    tagIcon: {
+        fontSize: 14,
+    },
+    tagText: {
+        fontSize: 13,
+        fontWeight: '600',
     },
     summaryCard: {
         backgroundColor: '#E8F5E9',

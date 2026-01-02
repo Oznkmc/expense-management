@@ -121,6 +121,22 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
+
+          <View style={styles.separator} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/tags/manage')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Text style={styles.menuIcon}>🏷️</Text>
+              <View>
+                <Text style={styles.menuTitle}>Etiket Yönetimi</Text>
+                <Text style={styles.menuSubtitle}>Harcama ve gelirleri etiketle</Text>
+              </View>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
         </View>
       </View>
 

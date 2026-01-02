@@ -22,10 +22,11 @@ export const incomeService = {
     date: Date,
     isRecurring: boolean = false,
     note?: string,
+    tags?: string[],
     type: IncomeType = IncomeType.OTHER,
     recurringDay?: number
   ): Promise<string> {
-    const incomeData = {
+    const incomeData: any = {
       userId,
       amount,
       type,
@@ -37,6 +38,11 @@ export const incomeService = {
       createdAt: Timestamp.fromDate(new Date()),
       updatedAt: Timestamp.fromDate(new Date())
     };
+
+    // Tags varsa ekle
+    if (tags && tags.length > 0) {
+      incomeData.tags = tags;
+    }
 
     const docRef = await addDoc(collection(db, 'incomes'), incomeData);
     return docRef.id;

@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { expenseService } from '../../services/expenseService';
-import { ExpenseCategory, CategoryNames, CategoryIcons, getMainCategory, MainCategory } from '../../types';
+import { tagService } from '../../services/tagService';
+import { ExpenseCategory, CategoryNames, CategoryIcons, getMainCategory, MainCategory, Tag } from '../../types';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -30,6 +31,38 @@ export default function AddExpenseScreen() {
     const [loading, setLoading] = useState(false);
     const [expandedMainCategory, setExpandedMainCategory] = useState<MainCategory | null>(null);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+    
+    // Tags
+    const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [tagsLoading, setTagsLoading] = useState(true);
+
+    // Load tags on mount
+    React.useEffect(() => {
+        if (user) {
+            loadTags();
+        }
+    }, [user]);
+
+    const loadTags = async () => {
+        if (!user) return;
+        try {
+            const tags = await tagService.getTags(user.uid);
+            setAvailableTags(tags);
+        } catch (error) {
+            console.error('Tags load error:', error);
+        } finally {
+            setTagsLoading(false);
+        }
+    };
+
+    const toggleTag = (tagId: string) => {
+        setSelectedTags(prev => 
+            prev.includes(tagId) 
+                ? prev.filter(id => id !== tagId)
+                : [...prev, tagId]
+        );
+    };
 
     const mainCategories: MainCategory[] = [
         MainCategory.FOOD,
@@ -132,7 +165,8 @@ export default function AddExpenseScreen() {
                 selectedCategory,
                 date,
                 note.trim(),
-                imageUri || undefined
+                imageUri || undefined,
+                selectedTags.length > 0 ? selectedTags : undefined
             );
 
             // Formu temizle
@@ -141,6 +175,7 @@ export default function AddExpenseScreen() {
             setNote('');
             setImageUri(null);
             setExpandedMainCategory(null);
+            setSelectedTags([]);
 
             Alert.alert('Başarılı! 🎉', 'Harcama başarıyla eklendi', [
                 {
@@ -322,6 +357,41 @@ export default function AddExpenseScreen() {
                             <Text style={styles.characterCount}>{note.length}/200</Text>
                         </View>
                     </View>
+
+                    {/* Tags */}
+                    {availableTags.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.label}>🏷️ Etiketler (Opsiyonel)</Text>
+                                <TouchableOpacity onPress={() => router.push('/tags/manage')}>
+                                    <Text style={styles.manageTags}>Yönet →</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.tagsContainer}>
+                                {availableTags.map(tag => (
+                                    <TouchableOpacity
+                                        key={tag.id}
+                                        style={[
+                                            styles.tagChip,
+                                            { backgroundColor: selectedTags.includes(tag.id) ? tag.color : '#F3F4F6' }
+                                        ]}
+                                        onPress={() => toggleTag(tag.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        {tag.icon && (
+                                            <Text style={styles.tagIcon}>{tag.icon}</Text>
+                                        )}
+                                        <Text style={[
+                                            styles.tagText,
+                                            { color: selectedTags.includes(tag.id) ? '#fff' : '#6B7280' }
+                                        ]}>
+                                            {tag.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    )}
 
                     {/* Photo */}
                     <View style={styles.section}>
@@ -701,6 +771,39 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: '#fff',
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    manageTags: {
+        fontSize: 13,
+        color: '#2563EB',
+        fontWeight: '600',
+    },
+    tagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    tagChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        gap: 4,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    tagIcon: {
+        fontSize: 14,
+    },
+    tagText: {
+        fontSize: 13,
+        fontWeight: '600',
     },
     selectedCategoryBox: {
         backgroundColor: '#E8F5E9',

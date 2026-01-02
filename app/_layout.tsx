@@ -59,6 +59,10 @@ export default function RootLayout() {
               presentation: 'card',
               headerShown: false
             }} />
+            <Stack.Screen name="tags/manage" options={{
+              presentation: 'card',
+              headerShown: false
+            }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

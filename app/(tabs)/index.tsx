@@ -20,7 +20,8 @@ import { budgetService } from '../../services/budgetService';
 import { expenseService } from '../../services/expenseService';
 import { incomeService } from '../../services/incomeService';
 import { categoryBudgetService } from '../../services/categoryBudgetService';
-import { BudgetSummary, Expense, MainCategoryNames, Income, CategoryBudget, MainCategory } from '../../types';
+import { tagService } from '../../services/tagService';
+import { BudgetSummary, Expense, MainCategoryNames, Income, CategoryBudget, MainCategory, Tag } from '../../types';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -35,6 +36,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [tagStats, setTagStats] = useState<{tag: Tag, total: number}[]>([]);
   const router = useRouter();
 
   const loadData = async () => {
@@ -42,17 +44,41 @@ export default function HomeScreen() {
 
     try {
       const now = new Date();
-      const [budgetSummary, expenses, incomes, budgets] = await Promise.all([
+      const [budgetSummary, expenses, incomes, budgets, tags] = await Promise.all([
         budgetService.getBudgetSummary(user.uid, userProfile.monthlyBudget),
         expenseService.getRecentExpenses(user.uid, 5),
         incomeService.getMonthlyIncomes(user.uid, now.getFullYear(), now.getMonth() + 1),
-        categoryBudgetService.getMonthlyBudgets(user.uid, now.getFullYear(), now.getMonth() + 1)
+        categoryBudgetService.getMonthlyBudgets(user.uid, now.getFullYear(), now.getMonth() + 1),
+        tagService.getTags(user.uid)
       ]);
 
       setSummary(budgetSummary);
       setRecentExpenses(expenses);
       setRecentIncomes(incomes.slice(0, 5));
       setCategoryBudgets(budgets);
+      
+      // Calculate tag-based spending
+      const allExpenses = await expenseService.getMonthlyExpenses(user.uid, now.getFullYear(), now.getMonth() + 1);
+      const tagTotals = new Map<string, number>();
+      
+      allExpenses.forEach(expense => {
+        if (expense.tags && expense.tags.length > 0) {
+          expense.tags.forEach(tagId => {
+            tagTotals.set(tagId, (tagTotals.get(tagId) || 0) + expense.amount);
+          });
+        }
+      });
+      
+      const tagStatsArray = Array.from(tagTotals.entries())
+        .map(([tagId, total]) => ({
+          tag: tags.find(t => t.id === tagId)!,
+          total
+        }))
+        .filter(item => item.tag)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+      
+      setTagStats(tagStatsArray);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -377,6 +403,33 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 );
               })}
+          </View>
+        </View>
+      )}
+
+      {/* Tag-Based Spending */}
+      {tagStats.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🏷️ Etiketlere Göre Harcamalar</Text>
+          </View>
+          <View style={styles.card}>
+            {tagStats.map((stat, index) => (
+              <View key={stat.tag.id}>
+                <View style={styles.tagStatItem}>
+                  <View style={styles.tagStatLeft}>
+                    <View style={[styles.tagStatColorBox, { backgroundColor: stat.tag.color }]}>
+                      {stat.tag.icon && <Text style={styles.tagStatIcon}>{stat.tag.icon}</Text>}
+                    </View>
+                    <Text style={styles.tagStatName}>{stat.tag.name}</Text>
+                  </View>
+                  <Text style={styles.tagStatAmount}>
+                    ₺{stat.total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </Text>
+                </View>
+                {index < tagStats.length - 1 && <View style={styles.itemDivider} />}
+              </View>
+            ))}
           </View>
         </View>
       )}
@@ -1060,5 +1113,39 @@ const styles = StyleSheet.create({
   },
   warningBadgeTextDanger: {
     color: '#DC2626',
+  },
+  tagStatItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  tagStatLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  tagStatColorBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tagStatIcon: {
+    fontSize: 20,
+  },
+  tagStatName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  tagStatAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EF4444',
   },
 });

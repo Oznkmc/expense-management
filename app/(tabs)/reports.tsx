@@ -16,7 +16,7 @@ import { incomeService } from '../../services/incomeService';
 import { debtService } from '../../services/debtService';
 import { goalService } from '../../services/goalService';
 import { recurringExpenseService } from '../../services/recurringExpenseService';
-import { MonthlyReport, MainCategoryNames, Income, DebtNote, DebtStatus, SavingGoal, GoalStatus, RecurringExpense, RecurringStatus } from '../../types';
+import { MonthlyReport, MainCategoryNames, Income, DebtNote, DebtStatus, DebtDirection, SavingGoal, GoalStatus, RecurringExpense, RecurringStatus } from '../../types';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -586,7 +586,7 @@ export default function ReportsScreen() {
                                             <Text style={styles.debtSummaryLabel}>Borçlar</Text>
                                             <Text style={styles.debtSummaryAmount}>
                                                 ₺{debts
-                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === 'OWING')
+                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === DebtDirection.OWING)
                                                     .reduce((sum, d) => sum + d.amount, 0)
                                                     .toLocaleString('tr-TR')}
                                             </Text>
@@ -596,7 +596,7 @@ export default function ReportsScreen() {
                                             <Text style={styles.debtSummaryLabel}>Alacaklar</Text>
                                             <Text style={styles.debtSummaryAmount}>
                                                 ₺{debts
-                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === 'OWED')
+                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === DebtDirection.OWED)
                                                     .reduce((sum, d) => sum + d.amount, 0)
                                                     .toLocaleString('tr-TR')}
                                             </Text>
@@ -608,7 +608,7 @@ export default function ReportsScreen() {
                                         .map((debt) => (
                                             <View key={debt.id} style={styles.debtItem}>
                                                 <View style={styles.debtLeft}>
-                                                    <Text style={styles.debtIcon}>{debt.direction === 'OWING' ? '🔴' : '🟢'}</Text>
+                                                    <Text style={styles.debtIcon}>{debt.direction === DebtDirection.OWING ? '🔴' : '🟢'}</Text>
                                                     <View>
                                                         <Text style={styles.debtCounterparty}>{debt.counterparty}</Text>
                                                         {debt.dueDate && (
@@ -620,9 +620,9 @@ export default function ReportsScreen() {
                                                 </View>
                                                 <Text style={[
                                                     styles.debtAmount,
-                                                    debt.direction === 'OWING' ? styles.debtOwing : styles.debtOwed
+                                                    debt.direction === DebtDirection.OWING ? styles.debtOwing : styles.debtOwed
                                                 ]}>
-                                                    {debt.direction === 'OWING' ? '-' : '+'}₺{debt.amount.toLocaleString('tr-TR')}
+                                                    {debt.direction === DebtDirection.OWING ? '-' : '+'}₺{debt.amount.toLocaleString('tr-TR')}
                                                 </Text>
                                             </View>
                                         ))}
