@@ -180,3 +180,50 @@ export interface MonthlyReport {
   dailyExpenses: Record<string, number>; // Date -> Amount
   topExpenses: Expense[];
 }
+
+export enum DebtDirection {
+  OWING = 'owing', // I owe someone
+  OWED = 'owed'    // Someone owes me
+}
+
+export enum DebtStatus {
+  OPEN = 'open',
+  PAID = 'paid'
+}
+
+export const DebtDirectionLabels: Record<DebtDirection, string> = {
+  [DebtDirection.OWING]: 'Borcum',
+  [DebtDirection.OWED]: 'Alacağım'
+};
+
+export interface DebtNote {
+  id: string;
+  userId: string;
+  counterparty: string; // Ahmet, Ayşe vb.
+  amount: number;
+  direction: DebtDirection;
+  note?: string;
+  status: DebtStatus;
+  dueDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum GoalStatus {
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled'
+}
+
+export interface SavingGoal {
+  id: string;
+  userId: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  status: GoalStatus;
+  dueDate?: Date;
+  note?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
