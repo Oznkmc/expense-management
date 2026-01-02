@@ -19,7 +19,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
 import { expenseService } from '../../services/expenseService';
 import { incomeService } from '../../services/incomeService';
-import { BudgetSummary, Expense, MainCategoryNames, Income } from '../../types';
+import { categoryBudgetService } from '../../services/categoryBudgetService';
+import { BudgetSummary, Expense, MainCategoryNames, Income, CategoryBudget, MainCategory } from '../../types';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [recentIncomes, setRecentIncomes] = useState<Income[]>([]);
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -39,15 +41,18 @@ export default function HomeScreen() {
     if (!user || !userProfile) return;
 
     try {
-      const [budgetSummary, expenses, incomes] = await Promise.all([
+      const now = new Date();
+      const [budgetSummary, expenses, incomes, budgets] = await Promise.all([
         budgetService.getBudgetSummary(user.uid, userProfile.monthlyBudget),
         expenseService.getRecentExpenses(user.uid, 5),
-        incomeService.getMonthlyIncomes(user.uid, new Date().getFullYear(), new Date().getMonth() + 1)
+        incomeService.getMonthlyIncomes(user.uid, now.getFullYear(), now.getMonth() + 1),
+        categoryBudgetService.getMonthlyBudgets(user.uid, now.getFullYear(), now.getMonth() + 1)
       ]);
 
       setSummary(budgetSummary);
       setRecentExpenses(expenses);
       setRecentIncomes(incomes.slice(0, 5));
+      setCategoryBudgets(budgets);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -278,6 +283,60 @@ export default function HomeScreen() {
           <Text style={styles.quickActionText}>Gelir Ekle</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Category Budget Warnings */}
+      {categoryBudgets.length > 0 && summary && (() => {
+        const warnings = categoryBudgets
+          .map(budget => {
+            const spent = summary.categoryExpenses[budget.category] || 0;
+            const percentage = budget.limit > 0 ? (spent / budget.limit) * 100 : 0;
+            return { budget, spent, percentage };
+          })
+          .filter(item => item.percentage >= 80)
+          .sort((a, b) => b.percentage - a.percentage);
+
+        return warnings.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>⚠️ Bütçe Uyarıları</Text>
+              <TouchableOpacity onPress={() => router.push('/budgets/categories')} activeOpacity={0.7}>
+                <Text style={styles.seeAllText}>Düzenle →</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.warningsCard}>
+              {warnings.map(({ budget, spent, percentage }) => {
+                const isOverLimit = percentage >= 100;
+                return (
+                  <View key={budget.id} style={styles.warningItem}>
+                    <View style={styles.warningLeft}>
+                      <Text style={styles.warningIcon}>{isOverLimit ? '🚨' : '⚡'}</Text>
+                      <View style={styles.warningInfo}>
+                        <Text style={styles.warningCategory}>
+                          {MainCategoryNames[budget.category]}
+                        </Text>
+                        <Text style={styles.warningText}>
+                          ₺{spent.toFixed(0)} / ₺{budget.limit.toFixed(0)} (%{percentage.toFixed(0)})
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[
+                      styles.warningBadge,
+                      isOverLimit ? styles.warningBadgeDanger : styles.warningBadgeWarning
+                    ]}>
+                      <Text style={[
+                        styles.warningBadgeText,
+                        isOverLimit ? styles.warningBadgeTextDanger : styles.warningBadgeTextWarning
+                      ]}>
+                        {isOverLimit ? 'Aşıldı!' : 'Dikkat'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ) : null;
+      })()}
 
       {/* Category Summary */}
       {Object.values(summary.categoryExpenses).some(amount => amount > 0) && (
@@ -934,5 +993,72 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  warningsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  warningItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  warningLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  warningIcon: {
+    fontSize: 24,
+  },
+  warningInfo: {
+    flex: 1,
+  },
+  warningCategory: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  warningBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  warningBadgeWarning: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  warningBadgeDanger: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  warningBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  warningBadgeTextWarning: {
+    color: '#C2410C',
+  },
+  warningBadgeTextDanger: {
+    color: '#DC2626',
   },
 });

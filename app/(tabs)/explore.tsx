@@ -87,6 +87,27 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Budget Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Bütçe Ayarları</Text>
+
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/budgets/categories')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Text style={styles.menuIcon}>📊</Text>
+              <View>
+                <Text style={styles.menuTitle}>Kategori Limitleri</Text>
+                <Text style={styles.menuSubtitle}>Her kategori için aylık limit belirle</Text>
+              </View>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* App Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Uygulama Hakkında</Text>
@@ -232,8 +253,35 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#e0e0e0',
+  },  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14
   },
-  signOutButton: {
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1
+  },
+  menuIcon: {
+    fontSize: 24
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827'
+  },
+  menuSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2
+  },
+  menuArrow: {
+    fontSize: 24,
+    color: '#9CA3AF'
+  },  signOutButton: {
     marginHorizontal: 20,
     marginTop: 20,
     backgroundColor: '#FF3B30',

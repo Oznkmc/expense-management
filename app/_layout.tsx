@@ -51,6 +51,10 @@ export default function RootLayout() {
               presentation: 'card',
               headerShown: false
             }} />
+            <Stack.Screen name="budgets/categories" options={{
+              presentation: 'card',
+              headerShown: false
+            }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
