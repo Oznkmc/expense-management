@@ -13,7 +13,10 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { budgetService } from '../../services/budgetService';
 import { incomeService } from '../../services/incomeService';
-import { MonthlyReport, MainCategoryNames, Income } from '../../types';
+import { debtService } from '../../services/debtService';
+import { goalService } from '../../services/goalService';
+import { recurringExpenseService } from '../../services/recurringExpenseService';
+import { MonthlyReport, MainCategoryNames, Income, DebtNote, DebtStatus, SavingGoal, GoalStatus, RecurringExpense, RecurringStatus } from '../../types';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -32,6 +35,9 @@ export default function ReportsScreen() {
     const [previousReport, setPreviousReport] = useState<MonthlyReport | null>(null);
     const [trend, setTrend] = useState<{ months: string[]; expenses: number[]; incomes: number[] } | null>(null);
     const [recentIncomes, setRecentIncomes] = useState<Income[]>([]);
+    const [debts, setDebts] = useState<DebtNote[]>([]);
+    const [goals, setGoals] = useState<SavingGoal[]>([]);
+    const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -67,11 +73,14 @@ export default function ReportsScreen() {
                 prevYear -= 1;
             }
 
-            const [current, previous, trendData, incomes] = await Promise.all([
+            const [current, previous, trendData, incomes, allDebts, allGoals, allRecurring] = await Promise.all([
                 budgetService.getMonthlyReport(user.uid, year, month),
                 budgetService.getMonthlyReport(user.uid, prevYear, prevMonth),
                 budgetService.getSpendingTrend(user.uid),
-                incomeService.getMonthlyIncomes(user.uid, year, month)
+                incomeService.getMonthlyIncomes(user.uid, year, month),
+                debtService.getDebts(user.uid),
+                goalService.getGoals(user.uid),
+                recurringExpenseService.getRecurringExpenses(user.uid)
             ]);
 
             // Aylık bütçeyi gelire ekle
@@ -87,6 +96,9 @@ export default function ReportsScreen() {
             setPreviousReport(previous);
             setTrend(trendData);
             setRecentIncomes(incomes.slice(0, 5));
+            setDebts(allDebts);
+            setGoals(allGoals);
+            setRecurringExpenses(allRecurring);
 
             // Animasyon başlat
             Animated.timing(fadeAnim, {
@@ -436,6 +448,224 @@ export default function ReportsScreen() {
                                         </Text>
                                     </View>
                                 ))}
+                            </View>
+                        )}
+
+                        {/* Average Daily Spending */}
+                        {currentReport.totalExpenses > 0 && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>📊 Günlük Ortalamalar</Text>
+                                <View style={styles.chartContainer}>
+                                    <View style={styles.statsGrid}>
+                                        <View style={styles.statCard}>
+                                            <Text style={styles.statIcon}>💸</Text>
+                                            <Text style={styles.statLabel}>Ortalama Günlük</Text>
+                                            <Text style={styles.statValue}>
+                                                ₺{(currentReport.totalExpenses / new Date().getDate()).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.statCard}>
+                                            <Text style={styles.statIcon}>📅</Text>
+                                            <Text style={styles.statLabel}>Aylık Tahmini</Text>
+                                            <Text style={styles.statValue}>
+                                                ₺{((currentReport.totalExpenses / new Date().getDate()) * 30).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.statsGrid}>
+                                        <View style={styles.statCard}>
+                                            <Text style={styles.statIcon}>🎯</Text>
+                                            <Text style={styles.statLabel}>Kalan Bütçe</Text>
+                                            <Text style={[
+                                                styles.statValue,
+                                                currentReport.balance < 0 && styles.negativeBalance
+                                            ]}>
+                                                ₺{currentReport.balance.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.statCard}>
+                                            <Text style={styles.statIcon}>⏳</Text>
+                                            <Text style={styles.statLabel}>Kalan Gün</Text>
+                                            <Text style={styles.statValue}>
+                                                {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate()} gün
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Recurring Expenses Summary */}
+                        {recurringExpenses.filter(r => r.status === RecurringStatus.ACTIVE).length > 0 && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>🔄 Tekrarlayan Harcamalar</Text>
+                                    <TouchableOpacity onPress={() => router.push('/recurring/list')} activeOpacity={0.7}>
+                                        <Text style={styles.seeAllText}>Tümünü Gör →</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    <View style={styles.recurringHeader}>
+                                        <Text style={styles.recurringTitle}>Aylık Sabit Giderler</Text>
+                                        <Text style={styles.recurringTotal}>
+                                            ₺{recurringExpenses
+                                                .filter(r => r.status === RecurringStatus.ACTIVE)
+                                                .reduce((sum, r) => sum + r.amount, 0)
+                                                .toLocaleString('tr-TR')}
+                                        </Text>
+                                    </View>
+                                    {recurringExpenses
+                                        .filter(r => r.status === RecurringStatus.ACTIVE)
+                                        .slice(0, 4)
+                                        .map((recurring) => {
+                                            const daysUntil = Math.ceil((recurring.nextDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                            return (
+                                                <View key={recurring.id} style={styles.recurringItem}>
+                                                    <View style={styles.recurringLeft}>
+                                                        <Text style={styles.recurringName}>{recurring.title}</Text>
+                                                        <Text style={styles.recurringDate}>
+                                                            {daysUntil <= 0 ? 'Bugün' : `${daysUntil} gün içinde`}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={styles.recurringAmount}>₺{recurring.amount.toLocaleString('tr-TR')}</Text>
+                                                </View>
+                                            );
+                                        })}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Goals Summary */}
+                        {goals.filter(g => g.status === GoalStatus.ACTIVE).length > 0 && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>🎯 Tasarruf Hedefleri</Text>
+                                    <TouchableOpacity onPress={() => router.push('/(tabs)/goals')} activeOpacity={0.7}>
+                                        <Text style={styles.seeAllText}>Tümünü Gör →</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    {goals
+                                        .filter(g => g.status === GoalStatus.ACTIVE)
+                                        .slice(0, 3)
+                                        .map((goal) => {
+                                            const progress = (goal.currentAmount / goal.targetAmount) * 100;
+                                            return (
+                                                <View key={goal.id} style={styles.goalItem}>
+                                                    <View style={styles.goalHeader}>
+                                                        <Text style={styles.goalTitle}>{goal.title}</Text>
+                                                        <Text style={styles.goalProgress}>{progress.toFixed(0)}%</Text>
+                                                    </View>
+                                                    <View style={styles.goalProgressBar}>
+                                                        <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
+                                                    </View>
+                                                    <View style={styles.goalAmounts}>
+                                                        <Text style={styles.goalAmount}>₺{goal.currentAmount.toLocaleString('tr-TR')}</Text>
+                                                        <Text style={styles.goalTarget}>/ ₺{goal.targetAmount.toLocaleString('tr-TR')}</Text>
+                                                    </View>
+                                                </View>
+                                            );
+                                        })}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Debts Summary */}
+                        {debts.filter(d => d.status === DebtStatus.OPEN).length > 0 && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>💳 Borç/Alacak Durumu</Text>
+                                    <TouchableOpacity onPress={() => router.push('/(tabs)/debts')} activeOpacity={0.7}>
+                                        <Text style={styles.seeAllText}>Tümünü Gör →</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.chartContainer}>
+                                    <View style={styles.debtSummaryRow}>
+                                        <View style={styles.debtSummaryCard}>
+                                            <Text style={styles.debtSummaryIcon}>🔴</Text>
+                                            <Text style={styles.debtSummaryLabel}>Borçlar</Text>
+                                            <Text style={styles.debtSummaryAmount}>
+                                                ₺{debts
+                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === 'OWING')
+                                                    .reduce((sum, d) => sum + d.amount, 0)
+                                                    .toLocaleString('tr-TR')}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.debtSummaryCard}>
+                                            <Text style={styles.debtSummaryIcon}>🟢</Text>
+                                            <Text style={styles.debtSummaryLabel}>Alacaklar</Text>
+                                            <Text style={styles.debtSummaryAmount}>
+                                                ₺{debts
+                                                    .filter(d => d.status === DebtStatus.OPEN && d.direction === 'OWED')
+                                                    .reduce((sum, d) => sum + d.amount, 0)
+                                                    .toLocaleString('tr-TR')}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    {debts
+                                        .filter(d => d.status === DebtStatus.OPEN)
+                                        .slice(0, 3)
+                                        .map((debt) => (
+                                            <View key={debt.id} style={styles.debtItem}>
+                                                <View style={styles.debtLeft}>
+                                                    <Text style={styles.debtIcon}>{debt.direction === 'OWING' ? '🔴' : '🟢'}</Text>
+                                                    <View>
+                                                        <Text style={styles.debtCounterparty}>{debt.counterparty}</Text>
+                                                        {debt.dueDate && (
+                                                            <Text style={styles.debtDueDate}>
+                                                                Vade: {debt.dueDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                                <Text style={[
+                                                    styles.debtAmount,
+                                                    debt.direction === 'OWING' ? styles.debtOwing : styles.debtOwed
+                                                ]}>
+                                                    {debt.direction === 'OWING' ? '-' : '+'}₺{debt.amount.toLocaleString('tr-TR')}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Income vs Expense Projection */}
+                        {trend && trend.expenses.length > 0 && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>📈 Gelir/Gider Dengesi</Text>
+                                <View style={styles.chartContainer}>
+                                    <View style={styles.projectionChart}>
+                                        {trend.months.slice(-6).map((month, index) => {
+                                            const expense = trend.expenses[trend.expenses.length - 6 + index] || 0;
+                                            const income = trend.incomes[trend.incomes.length - 6 + index] || 0;
+                                            const maxValue = Math.max(...trend.expenses, ...trend.incomes);
+                                            const expenseHeight = maxValue > 0 ? (expense / maxValue) * 100 : 5;
+                                            const incomeHeight = maxValue > 0 ? (income / maxValue) * 100 : 5;
+                                            const monthLabel = month.split('-')[1] + '/' + month.split('-')[0].slice(2);
+
+                                            return (
+                                                <View key={index} style={styles.projectionItem}>
+                                                    <View style={styles.projectionBars}>
+                                                        <View style={[styles.projectionBar, styles.incomeBar, { height: incomeHeight }]} />
+                                                        <View style={[styles.projectionBar, styles.expenseBar, { height: expenseHeight }]} />
+                                                    </View>
+                                                    <Text style={styles.projectionLabel}>{monthLabel}</Text>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                    <View style={styles.projectionLegend}>
+                                        <View style={styles.legendItem}>
+                                            <View style={[styles.legendDot, { backgroundColor: '#34C759' }]} />
+                                            <Text style={styles.legendText}>Gelir</Text>
+                                        </View>
+                                        <View style={styles.legendItem}>
+                                            <View style={[styles.legendDot, { backgroundColor: '#FF3B30' }]} />
+                                            <Text style={styles.legendText}>Gider</Text>
+                                        </View>
+                                    </View>
+                                </View>
                             </View>
                         )}
                     </>
@@ -907,6 +1137,247 @@ const styles = StyleSheet.create({
         color: '#D32F2F',
         fontWeight: '700',
         fontSize: 12,
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 12,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+    },
+    statIcon: {
+        fontSize: 24,
+        marginBottom: 8,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#666',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    recurringHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 2,
+        borderBottomColor: '#E0E0E0',
+    },
+    recurringTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#333',
+    },
+    recurringTotal: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FF3B30',
+    },
+    recurringItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    recurringLeft: {
+        flex: 1,
+    },
+    recurringName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 4,
+    },
+    recurringDate: {
+        fontSize: 12,
+        color: '#999',
+    },
+    recurringAmount: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#FF3B30',
+    },
+    goalItem: {
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    goalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    goalTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        flex: 1,
+    },
+    goalProgress: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#007AFF',
+    },
+    goalProgressBar: {
+        height: 8,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 6,
+    },
+    goalProgressFill: {
+        height: '100%',
+        backgroundColor: '#34C759',
+        borderRadius: 4,
+    },
+    goalAmounts: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    goalAmount: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#34C759',
+    },
+    goalTarget: {
+        fontSize: 12,
+        color: '#999',
+        marginLeft: 4,
+    },
+    debtSummaryRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    debtSummaryCard: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+    },
+    debtSummaryIcon: {
+        fontSize: 24,
+        marginBottom: 8,
+    },
+    debtSummaryLabel: {
+        fontSize: 11,
+        color: '#666',
+        marginBottom: 6,
+    },
+    debtSummaryAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    debtItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    debtLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        gap: 12,
+    },
+    debtIcon: {
+        fontSize: 20,
+    },
+    debtCounterparty: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 2,
+    },
+    debtDueDate: {
+        fontSize: 11,
+        color: '#999',
+    },
+    debtAmount: {
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
+    debtOwing: {
+        color: '#FF3B30',
+    },
+    debtOwed: {
+        color: '#34C759',
+    },
+    projectionChart: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'flex-end',
+        height: 120,
+        marginBottom: 16,
+    },
+    projectionItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    projectionBars: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        height: 100,
+        gap: 4,
+        marginBottom: 8,
+    },
+    projectionBar: {
+        width: 12,
+        borderTopLeftRadius: 3,
+        borderTopRightRadius: 3,
+        minHeight: 5,
+    },
+    incomeBar: {
+        backgroundColor: '#34C759',
+    },
+    expenseBar: {
+        backgroundColor: '#FF3B30',
+    },
+    projectionLabel: {
+        fontSize: 10,
+        color: '#666',
+        fontWeight: '600',
+    },
+    projectionLegend: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 24,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F0F0F0',
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    legendDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    legendText: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: '600',
     },
     footer: {
         height: 60,

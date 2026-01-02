@@ -105,6 +105,22 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
+
+          <View style={styles.separator} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/recurring/list')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Text style={styles.menuIcon}>🔄</Text>
+              <View>
+                <Text style={styles.menuTitle}>Tekrarlayan Harcamalar</Text>
+                <Text style={styles.menuSubtitle}>Kira, faturalar ve abonelikler</Text>
+              </View>
+            </View>
+            <Text style={styles.menuArrow}>›</Text>
+          </TouchableOpacity>
         </View>
       </View>
 

@@ -55,6 +55,10 @@ export default function RootLayout() {
               presentation: 'card',
               headerShown: false
             }} />
+            <Stack.Screen name="recurring/list" options={{
+              presentation: 'card',
+              headerShown: false
+            }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

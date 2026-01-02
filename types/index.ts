@@ -227,3 +227,39 @@ export interface SavingGoal {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export enum RecurringFrequency {
+  MONTHLY = 'monthly',
+  WEEKLY = 'weekly',
+  YEARLY = 'yearly'
+}
+
+export const RecurringFrequencyNames: Record<RecurringFrequency, string> = {
+  [RecurringFrequency.MONTHLY]: 'Aylık',
+  [RecurringFrequency.WEEKLY]: 'Haftalık',
+  [RecurringFrequency.YEARLY]: 'Yıllık'
+};
+
+export enum RecurringStatus {
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  CANCELLED = 'cancelled'
+}
+
+export interface RecurringExpense {
+  id: string;
+  userId: string;
+  title: string;
+  amount: number;
+  category: ExpenseCategory;
+  frequency: RecurringFrequency;
+  dayOfMonth?: number; // 1-31 for monthly
+  dayOfWeek?: number; // 0-6 for weekly (0=Sunday)
+  monthOfYear?: number; // 1-12 for yearly
+  status: RecurringStatus;
+  nextDate: Date;
+  lastProcessedDate?: Date;
+  note?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

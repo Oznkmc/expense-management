@@ -62,13 +62,21 @@ export default function GoalsScreen() {
   );
 
   const loadGoals = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('User not authenticated');
+      setLoading(false);
+      return;
+    }
     try {
+      console.log('Loading goals for user:', user.uid);
       const data = await goalService.getGoals(user.uid);
+      console.log('Goals loaded:', data.length);
       setGoals(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Goals load error:', error);
-      Alert.alert('Hata', 'Hedefler yüklenemedi');
+      console.error('Error code:', error?.code);
+      console.error('Error message:', error?.message);
+      Alert.alert('Hata', `Hedefler yüklenemedi: ${error?.message || 'Bilinmeyen hata'}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
