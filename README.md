@@ -1,12 +1,12 @@
 # 💰 Expense Management App
 
-React Native (Expo) ve Firebase kullanılarak geliştirilmiş, kullanıcıların gelir–gider takibi yapmasını ve bütçesini yönetmesini sağlayan cross-platform mobil uygulama.
+React Native (Expo), TypeScript ve Firebase kullanılarak geliştirilmiş, kullanıcıların gelir–gider takibi yapmasını ve bütçesini yönetmesini sağlayan cross-platform mobil uygulama.
 
 ---
 
 ## 🚀 Proje Hakkında
 
-Bu uygulama, bireysel kullanıcıların finansal durumlarını kontrol edebilmesi için geliştirilmiştir.  
+Bu uygulama, bireysel kullanıcıların finansal durumlarını kontrol edebilmesi için geliştirilmiştir.
 
 Kullanıcılar:
 
@@ -22,11 +22,13 @@ Uygulama, kullanıcı bazlı güvenli veri yönetimi ve gerçek zamanlı senkron
 
 ## 🏗️ Kullanılan Teknolojiler
 
+- TypeScript
 - React Native (Expo)
 - Expo Router
 - Firebase Authentication
 - Firebase Firestore (Real-time Database)
 - React Hooks (useState, useEffect)
+- Async/Await (Asenkron veri yönetimi)
 
 ---
 
@@ -56,9 +58,8 @@ Uygulama, kullanıcı bazlı güvenli veri yönetimi ve gerçek zamanlı senkron
 
 ## 🔐 Mimari Yapı
 
+- TypeScript ile type-safe component yapısı
 - Firebase Authentication ile güvenli kullanıcı doğrulama
 - Firestore ile kullanıcı bazlı gerçek zamanlı veri senkronizasyonu
-- Asenkron veri yönetimi
+- Asenkron veri yönetimi (async/await)
 - Component-based mimari ve state management yapısı
-
----
